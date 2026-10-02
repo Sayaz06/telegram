@@ -740,7 +740,7 @@ function enterApp(){
 
 function triggerSyncAll(){
   doc(`${P}/mygram_worker/cmd`).set({
-    cmd: "sync_all",
+    action: "sync_all",
     at: firebase.firestore.FieldValue.serverTimestamp()
   });
 }
