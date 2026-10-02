@@ -152,10 +152,9 @@ a{color:var(--accent);text-decoration:none}
 /* ── CHAT HEADER ──────────────────────────────────────────────── */
 #chat-header{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--surface);border-bottom:1px solid var(--border);min-height:56px}
 #back-btn{display:none}
-#hamburger-btn{display:none}
+#hamburger-btn{display:none!important}
 @media(max-width:640px){
   #back-btn{display:flex}
-  #hamburger-btn{display:flex}
   #sidebar{transform:translateX(-100%)}
   #sidebar.open{transform:translateX(0)}
 }
@@ -388,7 +387,7 @@ a{color:var(--accent);text-decoration:none}
 <!-- ═══════════════════ MAIN APP ══════════════════════════════ -->
 <div id="app" hidden>
   <!-- SIDEBAR -->
-  <div id="sidebar">
+  <div id="sidebar" class="open">
     <div id="sidebar-header">
       <button class="icon-btn" id="hamburger-btn" title="Tutup">
         <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
@@ -677,6 +676,10 @@ el("btn-fb-reset").onclick = async ()=>{
 
 auth.onAuthStateChanged(user=>{
   if(user){
+    if(user.uid !== UID){
+      toast("UID akaun ("+user.uid+") tak sama dengan UID app. Data tak boleh dibaca.");
+      console.warn("UID mismatch:", user.uid, "vs", UID);
+    }
     enterApp();
   } else {
     el("login-screen").hidden = false;
@@ -684,7 +687,7 @@ auth.onAuthStateChanged(user=>{
   }
 });
 
-el("btn-send-phone").onclick = async ()=>{
+if(el("btn-send-phone")) el("btn-send-phone").onclick = async ()=>{
   const cc = el("inp-cc").value;
   const num = el("inp-phone").value.replace(/\D/g,"");
   if(num.length<6){ toast("Nombor tidak sah"); return; }
@@ -752,7 +755,7 @@ function pollLoginStatus(){
   }, 2000);
 }
 
-el("btn-submit-otp").onclick = async ()=>{
+if(el("btn-submit-otp")) el("btn-submit-otp").onclick = async ()=>{
   const otp = el("inp-otp").value.trim();
   const twofa = el("inp-2fa").value;
   if(!otp){ toast("Masukkan OTP"); return; }
@@ -770,7 +773,7 @@ el("btn-submit-otp").onclick = async ()=>{
   el("btn-submit-otp").disabled = false;
 };
 
-el("btn-back-phone").onclick = ()=>{
+if(el("btn-back-phone")) el("btn-back-phone").onclick = ()=>{
   clearInterval(loginPollInterval);
   el("login-screen").classList.remove("otp-step");
   el("btn-send-phone").disabled = false;
@@ -782,22 +785,26 @@ el("btn-back-phone").onclick = ()=>{
 // ══════════════════════════════════════════════════════════════════
 // ENTER APP
 // ══════════════════════════════════════════════════════════════════
+let appEntered = false;
 function enterApp(){
   el("login-screen").hidden = true;
   el("app").hidden = false;
+  el("sidebar").classList.add("open");
+  if(appEntered) return;
+  appEntered = true;
   subscribeDialogs();
-  triggerSyncAll();
-  // Mobile: auto buka sidebar
-  if(window.innerWidth <= 640){
-    el("sidebar").classList.add("open");
-  }
+  // Ringan: sync senarai chat sahaja (bukan semua mesej)
+  doc(`${P}/mygram_worker/cmd`).set({
+    action: "sync_dialogs",
+    at: firebase.firestore.FieldValue.serverTimestamp()
+  }).catch(e=>toast("Ralat cmd: "+e.message));
 }
 
 function triggerSyncAll(){
   doc(`${P}/mygram_worker/cmd`).set({
-    action: "sync_all",
+    action: "sync_dialogs",
     at: firebase.firestore.FieldValue.serverTimestamp()
-  });
+  }).catch(e=>toast("Ralat sync: "+e.message));
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -806,10 +813,20 @@ function triggerSyncAll(){
 function subscribeDialogs(){
   dialogsUnsubscribe && dialogsUnsubscribe();
   dialogsUnsubscribe = doc(`${P}/mygram_worker/dialogs`).onSnapshot(snap=>{
-    if(!snap.exists) return;
+    if(!snap.exists){
+      el("dialog-list").innerHTML = '<div style="padding:24px;text-align:center;color:var(--fg3)">Tiada data chat. Tekan butang Sync.</div>';
+      return;
+    }
     const data = snap.data();
-    dialogs = Array.isArray(data.list) ? data.list : [];
+    dialogs = (Array.isArray(data.list) ? data.list : []).map(d=>({
+      ...d,
+      isGroup: d.isGroup ?? d.isGrp,
+      lastMsgTime: d.lastMsgTime || d.lastMsgAt
+    }));
     renderDialogs();
+  }, err=>{
+    console.error(err);
+    el("dialog-list").innerHTML = '<div style="padding:24px;text-align:center;color:var(--danger)">Gagal baca chat: '+escHtml(err.code||err.message)+'</div>';
   });
 }
 
@@ -852,19 +869,7 @@ el("search-inp").oninput = e=>{
   renderDialogs();
 };
 
-// Hamburger tutup sidebar
-el("hamburger-btn") && (el("hamburger-btn").onclick = ()=>{
-  el("sidebar").classList.remove("open");
-});
-
-// Overlay klik luar tutup sidebar
-el("app").addEventListener("click", e=>{
-  if(window.innerWidth > 640) return;
-  const sidebar = el("sidebar");
-  if(sidebar.classList.contains("open") && !sidebar.contains(e.target)){
-    sidebar.classList.remove("open");
-  }
-});
+// (sidebar dikawal oleh openChat & back-btn sahaja)
 
 // ══════════════════════════════════════════════════════════════════
 // OPEN CHAT
@@ -876,6 +881,7 @@ function openChat(chatId, chatData){
   // Mobile: hide sidebar, tunjuk chat
   if(window.innerWidth <= 640){
     el("sidebar").classList.remove("open");
+    try{ history.pushState({chat:activeChatId}, ""); }catch(e){}
   }
   el("empty-state").hidden = true;
   el("chat-view").hidden = false;
@@ -897,7 +903,7 @@ function openChat(chatId, chatData){
   // Reset
   replyToMsg = null;
   el("reply-bar").hidden = true;
-  el("load-more-btn").hidden = true;
+  LM_BTN.hidden = true;
   el("msgs-wrap").innerHTML = "";
   oldestMsgId = null;
   messages[activeChatId] = [];
@@ -947,19 +953,47 @@ function triggerLoadMessages(chatId, offsetId=0){
 // ══════════════════════════════════════════════════════════════════
 // MESSAGES SUBSCRIPTION
 // ══════════════════════════════════════════════════════════════════
+function normalizeMsg(m){
+  if(m.out === undefined) m.out = !!m.isOut;
+  if(m.replyTo && typeof m.replyTo === "object"){
+    m.replyToName = m.replyTo.name || "Mesej";
+    m.replyToText = m.replyTo.text || "";
+    m.replyTo = m.replyTo.id;
+  }
+  if(Array.isArray(m.reactions)){
+    const o = {};
+    m.reactions.forEach(r=>{ if(r && r.emoji) o[r.emoji] = r.count||1; });
+    m.reactions = o;
+  }
+  if(typeof m.mediaData === "string" && m.mediaData.startsWith("data:")){
+    m.mediaUrl = m.mediaData;
+    m.mediaData = null;
+  }
+  if(!m.text && m.hasMedia && !m.mediaType) m.mediaType = "other";
+  return m;
+}
+
 function subscribeMessages(chatId){
   const msgsCol = col(`${P}/mygram_messages/${chatId}/msgs`);
   msgsUnsubscribe = msgsCol
-    .orderBy("date","asc")
+    .orderBy("date","desc")
     .limit(80)
     .onSnapshot(snap=>{
       if(chatId !== activeChatId) return;
       const arr = [];
-      snap.forEach(d=>{ arr.push({id:d.id, ...d.data()}); });
+      snap.forEach(d=>{ arr.push(normalizeMsg({id:d.id, ...d.data()})); });
+      arr.reverse();
       messages[chatId] = arr;
       if(arr.length) oldestMsgId = arr[0].msgId || arr[0].id;
+      if(!arr.length){
+        el("msgs-wrap").innerHTML = '<div style="margin:auto;color:var(--fg3);font-size:13px">Memuatkan mesej dari Telegram...</div>';
+        return;
+      }
       renderMessages(chatId, arr);
       scrollToBottom();
+    }, err=>{
+      console.error(err);
+      el("msgs-wrap").innerHTML = '<div style="margin:auto;color:var(--danger);font-size:13px">Gagal baca mesej: '+escHtml(err.code||err.message)+'</div>';
     });
 }
 
@@ -967,8 +1001,8 @@ function renderMessages(chatId, arr){
   const wrap = el("msgs-wrap");
   wrap.innerHTML = "";
 
-  // Load more btn
-  const lmBtn = el("load-more-btn");
+  // Load more btn (guna rujukan tetap, sebab innerHTML="" buang dari DOM)
+  const lmBtn = LM_BTN;
   lmBtn.hidden = (arr.length < 30);
   wrap.appendChild(lmBtn);
 
@@ -1112,6 +1146,11 @@ function buildBubbleContent(msg, isOut){
     </div>`;
   }
 
+  if(mediaType === "poll" || mediaType === "other"){
+    const cap = msg.text ? `<div class="msg-text">${linkify(escHtml(msg.text))}</div>` : "";
+    return `<div style="color:var(--fg3);font-size:12px">${mediaType==="poll"?"📊 Undian":"📎 Media"}</div>${cap}`;
+  }
+
   // Text
   const text = msg.text||msg.message||"";
   if(!text && !mediaType) return `<div style="color:var(--fg3);font-size:12px">[mesej kosong]</div>`;
@@ -1176,7 +1215,8 @@ window.scrollToMsg = function(msgId){
 };
 
 // ── LOAD MORE ────────────────────────────────────────────────────
-el("load-more-btn").onclick = ()=>{
+var LM_BTN = el("load-more-btn");
+LM_BTN.onclick = ()=>{
   if(!activeChatId || !oldestMsgId) return;
   triggerLoadMessages(activeChatId, oldestMsgId);
   toast("Memuatkan mesej lama...");
@@ -1198,18 +1238,23 @@ function subscribeTyping(chatId){
 
 // ── SEND TYPING INDICATOR ────────────────────────────────────────
 let typingTimeout = null;
+let lastTypingSent = 0;
 el("msg-inp").addEventListener("input", ()=>{
   if(!activeChatId) return;
-  doc(`${P}/mygram_worker/typing`).set({
-    chatId: activeChatId,
-    typing: true,
-    outgoing: true,
-    at: firebase.firestore.FieldValue.serverTimestamp()
-  });
+  const now = Date.now();
+  if(now - lastTypingSent > 4000){
+    lastTypingSent = now;
+    doc(`${P}/mygram_worker/typing`).set({
+      chatId: activeChatId,
+      aktif: true,
+      ts: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(()=>{});
+  }
   clearTimeout(typingTimeout);
   typingTimeout = setTimeout(()=>{
-    doc(`${P}/mygram_worker/typing`).set({ outgoing: false, typing: false });
-  }, 4000);
+    lastTypingSent = 0;
+    doc(`${P}/mygram_worker/typing`).set({ aktif: false, ts: firebase.firestore.FieldValue.serverTimestamp() }).catch(()=>{});
+  }, 5000);
 });
 
 // ── AUTO RESIZE TEXTAREA ─────────────────────────────────────────
@@ -1238,22 +1283,23 @@ async function sendMessage(){
   const payload = {
     chatId: String(activeChatId),
     text,
-    at: firebase.firestore.FieldValue.serverTimestamp(),
-    pending: true
+    status: "pending",
+    at: firebase.firestore.FieldValue.serverTimestamp()
   };
 
   if(replyToMsg){
-    payload.replyToMsgId = replyToMsg.msgId || replyToMsg.id;
-    cancelReply();
+    payload.replyToId = String(replyToMsg.msgId || replyToMsg.id);
+    payload.replyToMsgId = payload.replyToId;
   }
 
   // Optimistic local display
   const tempId = "temp-"+Date.now();
   const tempMsg = {
     id: tempId, msgId: tempId, out: true, text, pending: true,
-    date: new Date(), replyTo: payload.replyToMsgId,
+    date: new Date().toISOString(), replyTo: payload.replyToMsgId,
     replyToText: replyToMsg?.text, replyToName: "Anda"
   };
+  if(replyToMsg) cancelReply();
   if(!messages[activeChatId]) messages[activeChatId]=[];
   messages[activeChatId].push(tempMsg);
   renderMessages(activeChatId, messages[activeChatId]);
@@ -1279,8 +1325,8 @@ el("file-pick").onchange = async e=>{
 
 async function sendFile(file){
   if(!activeChatId) return;
-  const maxBytes = 50*1024*1024; // 50MB
-  if(file.size > maxBytes){ toast("Fail terlalu besar (max 50MB)"); return; }
+  const maxBytes = 700*1024; // had dokumen Firestore 1MB (base64 +33%)
+  if(file.size > maxBytes){ toast("Fail terlalu besar (max 700KB)"); return; }
 
   toast("Memuat naik...");
   const reader = new FileReader();
@@ -1291,11 +1337,13 @@ async function sendFile(file){
       fileName: file.name,
       fileSize: file.size,
       mimeType: file.type,
+      mediaType: (file.type||"").split("/")[0] || "file",
       dataUrl,
+      status: "pending",
       at: firebase.firestore.FieldValue.serverTimestamp()
     };
     if(replyToMsg){
-      payload.replyToMsgId = replyToMsg.msgId||replyToMsg.id;
+      payload.replyToId = String(replyToMsg.msgId||replyToMsg.id);
       cancelReply();
     }
     try{
@@ -1570,6 +1618,7 @@ async function sendReaction(msg, emoji){
       chatId: String(activeChatId),
       msgId: String(msg.msgId||msg.id),
       emoji,
+      status: "pending",
       at: firebase.firestore.FieldValue.serverTimestamp()
     });
   }catch(e){ toast("Gagal hantar reaksi"); }
@@ -1606,6 +1655,7 @@ async function deleteMsg(msgId, forEveryone){
       chatId: String(activeChatId),
       msgId: String(msgId),
       forEveryone,
+      status: "pending",
       at: firebase.firestore.FieldValue.serverTimestamp()
     });
     toast(forEveryone ? "Dipadam untuk semua" : "Dipadam untuk saya");
@@ -1626,7 +1676,7 @@ function showForwardSheet(msg){
   const sheet = el("forward-sheet");
   const list = el("forward-list");
   list.innerHTML = dialogs.slice(0,30).map(d=>`
-    <div class="fw-item" data-id="${d.id}">
+    <div class="fw-item" data-id="${d.cid||d.id}">
       <div class="fw-avatar">${avatarInitial(d.name||"?")}</div>
       <div class="fw-name">${escHtml(d.name||"?")}</div>
     </div>`).join("");
@@ -1732,25 +1782,23 @@ window.downloadFile = function(src, name){
 // ══════════════════════════════════════════════════════════════════
 // MOBILE NAVIGATION
 // ══════════════════════════════════════════════════════════════════
-el("back-btn").onclick = ()=>{
-  if(window.innerWidth <= 640){
-    el("sidebar").classList.add("open");
-    el("chat-view").hidden = true;
-    el("empty-state").hidden = false;
-    return;
-  }
-  el("sidebar").classList.add("open");
-  el("chat-view").hidden = true;
-  el("empty-state").hidden = false;
-  activeChatId = null;
+el("back-btn").onclick = (e)=>{
+  e && e.stopPropagation();
   msgsUnsubscribe && msgsUnsubscribe();
   typingUnsubscribe && typingUnsubscribe();
+  msgsUnsubscribe = null;
+  typingUnsubscribe = null;
+  activeChatId = null;
+  el("chat-view").hidden = true;
+  el("empty-state").hidden = false;
+  el("sidebar").classList.add("open");
+  renderDialogs();
 };
 
-// Hamburger on mobile (click app name to open sidebar)
-el("sidebar-header").querySelector(".app-name").onclick = ()=>{
-  el("sidebar").classList.toggle("open");
-};
+// Butang back Android/browser: kembali ke senarai chat
+window.addEventListener("popstate", ()=>{
+  if(activeChatId) el("back-btn").onclick();
+});
 
 // ══════════════════════════════════════════════════════════════════
 // SYNC BUTTON
