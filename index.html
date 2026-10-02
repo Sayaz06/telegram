@@ -76,6 +76,10 @@ body { background: var(--bg); color: var(--fg); }
 .otp-row input:focus { border-color: var(--accent); }
 .auth-err { color: #dc2626; font-size: 12px; text-align: center; min-height: 16px; }
 .auth-foot { font-size: 11px; color: var(--fg-muted); text-align: center; }
+.phone-row { display: flex; gap: 8px; }
+.phone-cc { width: 90px; flex-shrink: 0; padding: 12px 10px; border: 1.5px solid var(--input-border); border-radius: 10px; background: var(--bg); color: var(--fg); font-size: 15px; font-family: inherit; outline: none; cursor: pointer; appearance: none; text-align: center; }
+.phone-cc:focus { border-color: var(--accent); }
+.phone-num { flex: 1; }
 
 /* ── APP ── */
 #app-screen { flex-direction: row; background: var(--bg); }
@@ -155,7 +159,31 @@ body { background: var(--bg); color: var(--fg); }
     <p id="a-desc">Masukkan nombor telefon untuk log masuk</p>
 
     <div id="s-phone">
-      <input type="tel" id="inp-phone" placeholder="+60123456789" autocomplete="tel">
+      <div class="phone-row">
+        <select class="phone-cc" id="inp-cc">
+          <option value="+60" selected>🇲🇾 +60</option>
+          <option value="+65">🇸🇬 +65</option>
+          <option value="+62">🇮🇩 +62</option>
+          <option value="+66">🇹🇭 +66</option>
+          <option value="+673">🇧🇳 +673</option>
+          <option value="+63">🇵🇭 +63</option>
+          <option value="+84">🇻🇳 +84</option>
+          <option value="+91">🇮🇳 +91</option>
+          <option value="+44">🇬🇧 +44</option>
+          <option value="+1">🇺🇸 +1</option>
+          <option value="+61">🇦🇺 +61</option>
+          <option value="+81">🇯🇵 +81</option>
+          <option value="+82">🇰🇷 +82</option>
+          <option value="+86">🇨🇳 +86</option>
+          <option value="+971">🇦🇪 +971</option>
+          <option value="+966">🇸🇦 +966</option>
+          <option value="+49">🇩🇪 +49</option>
+          <option value="+33">🇫🇷 +33</option>
+          <option value="+7">🇷🇺 +7</option>
+          <option value="+55">🇧🇷 +55</option>
+        </select>
+        <input type="tel" id="inp-phone" class="phone-num" placeholder="123456789" autocomplete="tel" inputmode="numeric">
+      </div>
     </div>
 
     <div id="s-otp" hidden>
@@ -232,8 +260,8 @@ const PROXY_URL = 'wss://your-railway-app.railway.app';
 // ══════════════════════════════════════════
 
 // Telegram API credentials — daftar di https://my.telegram.org/apps
-const API_ID   = 0;       // ← ISI API_ID AWAK
-const API_HASH = '';      // ← ISI API_HASH AWAK
+const API_ID   = 32838983;
+const API_HASH = 'd7e4da3535bddc54357c30e454272003';
 
 // ── HELPERS ──
 const $ = id => document.getElementById(id);
@@ -280,8 +308,10 @@ $('a-btn').addEventListener('click', async () => {
 
   try {
     if (authStep === 'phone') {
-      const phone = $('inp-phone').value.trim();
-      if (!phone) throw new Error('Masukkan nombor telefon');
+      const cc = $('inp-cc').value;
+      const num = $('inp-phone').value.trim().replace(/^0+/, ''); // buang 0 depan
+      if (!num) throw new Error('Masukkan nombor telefon');
+      const phone = cc + num;
 
       // Init gramjs client dengan proxy
       const { TelegramClient } = telegram;
@@ -317,7 +347,9 @@ $('a-btn').addEventListener('click', async () => {
       const code = [...document.querySelectorAll('.otp-d')].map(i => i.value).join('');
       if (code.length !== 5) throw new Error('Masukkan 5 digit kod');
 
-      const phone = $('inp-phone').value.trim();
+      const cc2 = $('inp-cc').value;
+      const num2 = $('inp-phone').value.trim().replace(/^0+/, '');
+      const phone = cc2 + num2;
       await tgClient.signIn({ phoneNumber: phone, phoneCodeHash, phoneCode: code });
       await afterLogin();
 
