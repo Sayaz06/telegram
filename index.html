@@ -765,7 +765,7 @@ function renderDialogs(){
   container.innerHTML = list.map(d=>dialogHTML(d)).join("");
   // Attach click
   container.querySelectorAll(".dialog-item").forEach(item=>{
-    item.onclick = ()=> openChat(item.dataset.id, list.find(d=>String(d.id)===item.dataset.id));
+    item.onclick = ()=> openChat(item.dataset.id, list.find(d=>String(d.cid||d.id)===item.dataset.id));
   });
 }
 
@@ -774,9 +774,10 @@ function dialogHTML(d){
   const online = d.online ? '<span class="online-dot"></span>' : "";
   const preview = d.lastMsg ? escHtml(d.lastMsg).substring(0,60) : "📷 Media";
   const badge = d.unread ? `<span class="d-badge">${d.unread}</span>` : "";
-  const active = String(d.id)===String(activeChatId) ? " active" : "";
+  const chatId = d.cid || d.id || "";
+  const active = String(chatId)===String(activeChatId) ? " active" : "";
   const avatarImg = d.photo ? `<img src="${d.photo}" alt=""/>` : `${initials}`;
-  return `<div class="dialog-item${active}" data-id="${d.id}">
+  return `<div class="dialog-item${active}" data-id="${chatId}">
     <div class="d-avatar">${avatarImg}${online}</div>
     <div class="d-info">
       <div class="d-row1">
