@@ -151,7 +151,13 @@ a{color:var(--accent);text-decoration:none}
 /* ── CHAT HEADER ──────────────────────────────────────────────── */
 #chat-header{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--surface);border-bottom:1px solid var(--border);min-height:56px}
 #back-btn{display:none}
-@media(max-width:640px){#back-btn{display:flex}}
+#hamburger-btn{display:none}
+@media(max-width:640px){
+  #back-btn{display:flex}
+  #hamburger-btn{display:flex}
+  #sidebar{transform:translateX(-100%)}
+  #sidebar.open{transform:translateX(0)}
+}
 #chat-avatar{width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:14px;flex-shrink:0;overflow:hidden}
 #chat-avatar img{width:100%;height:100%;object-fit:cover}
 #chat-info{flex:1;min-width:0}
@@ -409,6 +415,9 @@ a{color:var(--accent);text-decoration:none}
   <!-- SIDEBAR -->
   <div id="sidebar">
     <div id="sidebar-header">
+      <button class="icon-btn" id="hamburger-btn" title="Tutup">
+        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
       <span class="app-name">✈️ MyGram</span>
       <button class="icon-btn" id="btn-theme" title="Tukar Tema">
         <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>
@@ -785,6 +794,10 @@ function enterApp(){
   el("app").hidden = false;
   subscribeDialogs();
   triggerSyncAll();
+  // Mobile: auto buka sidebar
+  if(window.innerWidth <= 640){
+    el("sidebar").classList.add("open");
+  }
 }
 
 function triggerSyncAll(){
@@ -845,6 +858,20 @@ el("search-inp").oninput = e=>{
   searchQuery = e.target.value.trim();
   renderDialogs();
 };
+
+// Hamburger tutup sidebar
+el("hamburger-btn") && (el("hamburger-btn").onclick = ()=>{
+  el("sidebar").classList.remove("open");
+});
+
+// Overlay klik luar tutup sidebar
+el("app").addEventListener("click", e=>{
+  if(window.innerWidth > 640) return;
+  const sidebar = el("sidebar");
+  if(sidebar.classList.contains("open") && !sidebar.contains(e.target)){
+    sidebar.classList.remove("open");
+  }
+});
 
 // ══════════════════════════════════════════════════════════════════
 // OPEN CHAT
