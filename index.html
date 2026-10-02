@@ -865,7 +865,7 @@ function updateChatStatus(d){
 
 function triggerLoadMessages(chatId, offsetId=0){
   doc(`${P}/mygram_worker/cmd`).set({
-    cmd: "load_messages",
+    action: "load_messages",
     chatId: String(chatId),
     offsetId,
     at: firebase.firestore.FieldValue.serverTimestamp()
