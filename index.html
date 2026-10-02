@@ -880,8 +880,10 @@ function openChat(chatId, chatData){
   activeChatId = String(chatId);
   activeChatData = chatData || {};
 
-  // Mobile: hide sidebar
-  el("sidebar").classList.remove("open");
+  // Mobile: hide sidebar, tunjuk chat
+  if(window.innerWidth <= 640){
+    el("sidebar").classList.remove("open");
+  }
   el("empty-state").hidden = true;
   el("chat-view").hidden = false;
 
@@ -1738,6 +1740,12 @@ window.downloadFile = function(src, name){
 // MOBILE NAVIGATION
 // ══════════════════════════════════════════════════════════════════
 el("back-btn").onclick = ()=>{
+  if(window.innerWidth <= 640){
+    el("sidebar").classList.add("open");
+    el("chat-view").hidden = true;
+    el("empty-state").hidden = false;
+    return;
+  }
   el("sidebar").classList.add("open");
   el("chat-view").hidden = true;
   el("empty-state").hidden = false;
