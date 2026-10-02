@@ -16,6 +16,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-app-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-firestore-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-storage-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-auth-compat.min.js"></script>
 
 <style>
 /* ── TOKENS ──────────────────────────────────────────────────── */
@@ -365,47 +366,21 @@ a{color:var(--accent);text-decoration:none}
 <div id="login-screen">
   <div class="logo">✈️</div>
   <h1>MyGram</h1>
-  <p>Log masuk dengan nombor telefon Telegram anda</p>
+  <p>Log masuk dengan akaun admin anda</p>
 
   <div class="login-card">
-    <!-- Phone Step -->
-    <div id="phone-wrap">
-      <label>Nombor Telefon</label>
+    <div id="fb-login-wrap">
+      <label>Emel</label>
       <div class="inp-wrap">
-        <select id="inp-cc">
-          <option value="+60" selected>🇲🇾 +60</option>
-          <option value="+65">🇸🇬 +65</option>
-          <option value="+62">🇮🇩 +62</option>
-          <option value="+66">🇹🇭 +66</option>
-          <option value="+63">🇵🇭 +63</option>
-          <option value="+84">🇻🇳 +84</option>
-          <option value="+880">🇧🇩 +880</option>
-          <option value="+91">🇮🇳 +91</option>
-          <option value="+44">🇬🇧 +44</option>
-          <option value="+1">🇺🇸 +1</option>
-          <option value="+61">🇦🇺 +61</option>
-          <option value="+49">🇩🇪 +49</option>
-          <option value="+7">🇷🇺 +7</option>
-        </select>
-        <input type="tel" id="inp-phone" placeholder="123456789" inputmode="numeric"/>
+        <input type="email" id="inp-email" placeholder="adha86614@gmail.com" inputmode="email" autocomplete="email"/>
       </div>
-      <button class="btn-primary" id="btn-send-phone">Hantar Kod OTP</button>
+      <label>Kata Laluan</label>
+      <div class="inp-wrap">
+        <input type="password" id="inp-fbpass" placeholder="Kata laluan" autocomplete="current-password"/>
+      </div>
+      <button class="btn-primary" id="btn-fb-login">Log Masuk</button>
+      <button class="btn-cancel" id="btn-fb-reset">Lupa kata laluan?</button>
     </div>
-
-    <!-- OTP Step -->
-    <div id="otp-wrap">
-      <label>Masukkan OTP</label>
-      <div class="inp-wrap">
-        <input type="text" id="inp-otp" placeholder="12345" inputmode="numeric" maxlength="8"/>
-      </div>
-      <label>Kata Laluan 2FA (kosong jika tiada)</label>
-      <div class="inp-wrap">
-        <input type="password" id="inp-2fa" placeholder="Kata laluan 2FA"/>
-      </div>
-      <button class="btn-primary" id="btn-submit-otp">Sahkan</button>
-      <button class="btn-cancel" id="btn-back-phone">← Tukar Nombor</button>
-    </div>
-
     <div id="login-status"></div>
   </div>
 </div>
@@ -577,6 +552,7 @@ const FIREBASE_CONFIG = {
 firebase.initializeApp(FIREBASE_CONFIG);
 const db = firebase.firestore();
 const storage = firebase.storage();
+const auth = firebase.auth();
 
 const UID = "jcATY6Xc0GdvgA1kGbNLEvoygDy1";
 const P   = `users/${UID}`;  // prefix path
@@ -674,6 +650,40 @@ try{
 // ══════════════════════════════════════════════════════════════════
 function setLoginStatus(msg){ el("login-status").textContent = msg; }
 
+// ── FIREBASE AUTH LOGIN ───────────────────────────────────────
+el("btn-fb-login").onclick = async ()=>{
+  const email = el("inp-email").value.trim();
+  const pass  = el("inp-fbpass").value;
+  if(!email||!pass){ toast("Isi emel dan kata laluan"); return; }
+  el("btn-fb-login").disabled = true;
+  setLoginStatus("Mengesahkan...");
+  try{
+    await auth.signInWithEmailAndPassword(email, pass);
+    // onAuthStateChanged akan handle masuk app
+  }catch(e){
+    setLoginStatus("Gagal: " + (e.code==="auth/wrong-password"?"Kata laluan salah":e.code==="auth/user-not-found"?"Emel tidak dijumpai":e.message));
+    el("btn-fb-login").disabled = false;
+  }
+};
+
+el("btn-fb-reset").onclick = async ()=>{
+  const email = el("inp-email").value.trim();
+  if(!email){ toast("Masukkan emel dulu"); return; }
+  try{
+    await auth.sendPasswordResetEmail(email);
+    toast("Emel reset dihantar!");
+  }catch(e){ toast("Gagal: "+e.message); }
+};
+
+auth.onAuthStateChanged(user=>{
+  if(user){
+    enterApp();
+  } else {
+    el("login-screen").hidden = false;
+    el("app").hidden = true;
+  }
+});
+
 el("btn-send-phone").onclick = async ()=>{
   const cc = el("inp-cc").value;
   const num = el("inp-phone").value.replace(/\D/g,"");
@@ -767,24 +777,7 @@ el("btn-back-phone").onclick = ()=>{
   setLoginStatus("");
 };
 
-// Check if already logged in
-async function checkLogin(){
-  try{
-    const statusRef = doc(`${P}/mygram_worker/status`);
-    const snap = await statusRef.get();
-    if(snap.exists && snap.data().state === "connected"){
-      enterApp();
-      return;
-    }
-    // Also check session exists
-    const sessionSnap = await doc(`${P}/mygram_session/main`).get();
-    if(sessionSnap.exists && sessionSnap.data().session){
-      enterApp();
-      return;
-    }
-  }catch(e){ console.error(e); }
-}
-checkLogin();
+// Auth check handled by onAuthStateChanged above
 
 // ══════════════════════════════════════════════════════════════════
 // ENTER APP
