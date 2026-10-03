@@ -1580,6 +1580,7 @@ async function onTgReady(){
   setConn("");
   try{ me = await client.getMe(); }catch(e){}
   loadNavAvatar();
+  startOnlinePing();
   client.addEventHandler(onNewMessage, new NewMessage({}));
   client.addEventHandler(onRawUpdate);
   await loadDialogs();
@@ -4729,7 +4730,25 @@ document.addEventListener("visibilitychange", ()=>{
     loadDialogs();
     if(activeChatId) markRead(activeChatId);
   }
+  setOnline(document.visibilityState==="visible");
 });
+// ── Status "dalam talian" macam app Telegram biasa ──
+// Telegram rasmi hantar status online setiap ~60s semasa app dibuka, dan offline bila ditutup.
+let onlineTimer = null, lastOnlineState = null;
+async function setOnline(on){
+  if(!tgReady || !client) return;
+  if(on === lastOnlineState && !on) return;
+  lastOnlineState = on;
+  try{ await client.invoke(new Api.account.UpdateStatus({ offline: !on })); }catch(e){}
+}
+function startOnlinePing(){
+  clearInterval(onlineTimer);
+  if(document.visibilityState==="visible") setOnline(true);
+  onlineTimer = setInterval(()=>{
+    if(document.visibilityState==="visible") setOnline(true);
+  }, 60000);
+}
+window.addEventListener("pagehide", ()=> setOnline(false));
 
 // ── PWA: daftar service worker (perlu untuk pasang app ke skrin utama) ──
 if("serviceWorker" in navigator && location.protocol==="https:"){
