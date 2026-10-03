@@ -2,7 +2,7 @@
   "name": "MyGram",
   "short_name": "MyGram",
   "description": "Telegram client peribadi",
-  "id": "./",
+  "id": "./?app=mygram2",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
