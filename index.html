@@ -4725,19 +4725,28 @@ el("btn-sync").onclick = async ()=>{
 };
 
 // Bila app dibuka semula selepas lama di latar
+let offlineRetry = null;
 document.addEventListener("visibilitychange", ()=>{
+  clearTimeout(offlineRetry);
   if(document.visibilityState==="visible" && tgReady){
     loadDialogs();
     if(activeChatId) markRead(activeChatId);
+    setOnline(true, true);
+  }else{
+    // keluar app: hantar offline SERTA-MERTA, ulang beberapa kali supaya pasti sampai
+    setOnline(false, true);
+    offlineRetry = setTimeout(()=>{
+      if(document.visibilityState==="hidden") setOnline(false, true);
+    }, 1500);
   }
-  setOnline(document.visibilityState==="visible");
 });
+document.addEventListener("freeze", ()=> setOnline(false, true));
 // ── Status "dalam talian" macam app Telegram biasa ──
 // Telegram rasmi hantar status online setiap ~60s semasa app dibuka, dan offline bila ditutup.
 let onlineTimer = null, lastOnlineState = null;
-async function setOnline(on){
+async function setOnline(on, force){
   if(!tgReady || !client) return;
-  if(on === lastOnlineState && !on) return;
+  if(!force && on === lastOnlineState && !on) return;
   lastOnlineState = on;
   try{ await client.invoke(new Api.account.UpdateStatus({ offline: !on })); }catch(e){}
 }
@@ -4746,9 +4755,10 @@ function startOnlinePing(){
   if(document.visibilityState==="visible") setOnline(true);
   onlineTimer = setInterval(()=>{
     if(document.visibilityState==="visible") setOnline(true);
-  }, 60000);
+  }, 55000);
 }
-window.addEventListener("pagehide", ()=> setOnline(false));
+window.addEventListener("pagehide", ()=> setOnline(false, true));
+window.addEventListener("pageshow", ()=>{ if(document.visibilityState==="visible") setOnline(true, true); });
 
 // ── PWA: daftar service worker (perlu untuk pasang app ke skrin utama) ──
 if("serviceWorker" in navigator && location.protocol==="https:"){
