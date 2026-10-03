@@ -251,8 +251,24 @@ a{color:var(--accent);text-decoration:none}
 .ic.c-blue{background:#2f95e8}.ic.c-orange{background:#f19a26}.ic.c-green{background:#45b74b}.ic.c-red{background:#e5484d}
 .ic.c-indigo{background:#4f7df0}.ic.c-teal{background:#20b3c3}.ic.c-purple{background:#8e6be8}.ic.c-grey{background:#6b7c8f}
 .set-foot{text-align:center;color:var(--fg3);font-size:12px;padding:6px 16px 16px}
-.ct-status{font-size:13px;color:var(--fg3)}
+.ct-status{font-size:14px;color:var(--fg3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ct-status.online{color:var(--accent)}
+/* ── KENALAN gaya Telegram: kad bulat ── */
+#pane-contacts{padding-top:6px}
+.ct-card{background:color-mix(in srgb,var(--fg) 5%,var(--sidebar-bg));margin:0 12px 14px;border-radius:22px;overflow:hidden;padding:4px 0 6px}
+.ct-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 6px 22px}
+.ct-head span{color:var(--accent);font-weight:600;font-size:15.5px}
+.ct-sort{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--fg2);background:none;border:none}
+.ct-sort svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ct-sort:active{background:var(--hover)}
+.ct-row{display:flex;align-items:center;gap:14px;padding:7px 16px;cursor:pointer}
+#pane-contacts .ct-row.dialog-item{border:none;box-shadow:none}
+#pane-contacts .ct-row.dialog-item::after,#pane-contacts .ct-row.dialog-item::before{display:none}
+.ct-row:active,.ct-row:hover{background:var(--hover)}
+.ct-row .d-avatar{width:52px;height:52px;font-size:19px}
+.ct-row .ct-info{flex:1;min-width:0}
+.ct-row .ct-name{font-size:16.5px;font-weight:600;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ct-letter{width:26px;flex-shrink:0;text-align:center;font-size:22px;font-weight:600;color:var(--fg3)}
 /* ── BAR ATAS & BAWAH CHAT TERAPUNG (macam Telegram) ─────────── */
 :root{--bar-bg:rgba(255,255,255,.94);--bar-solid:#ffffff;--bar-shadow:0 2px 12px rgba(0,0,0,.18)}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bar-bg:rgba(33,45,59,.94);--bar-solid:#1d2733;--bar-shadow:0 2px 12px rgba(0,0,0,.45)}}
@@ -1996,20 +2012,54 @@ async function loadContacts(force){
     box.innerHTML = `<div class="list-note">Gagal muat kenalan: ${escHtml(e.message||e)}</div>`;
   }
 }
+let ctSort = "seen";
+try{ ctSort = localStorage.getItem("mg-ct-sort") || "seen"; }catch(e){}
+function seenScore(e){
+  const s = e && e.status ? e.status.className : "";
+  if(s==="UserStatusOnline") return 9e12;
+  if(s==="UserStatusOffline") return (e.status.wasOnline||0) * 1000;
+  if(s==="UserStatusRecently") return 3;
+  if(s==="UserStatusLastWeek") return 2;
+  if(s==="UserStatusLastMonth") return 1;
+  return 0;
+}
 function renderContacts(){
   const box = el("pane-contacts");
   if(!contacts) return;
   const q = searchQuery.toLowerCase();
-  const list = q ? contacts.filter(c=>c.name.toLowerCase().includes(q)) : contacts;
+  let list = q ? contacts.filter(c=>c.name.toLowerCase().includes(q)) : contacts.slice();
   if(!list.length){ box.innerHTML = `<div class="list-note">${q?"Tiada padanan":"Tiada kenalan"}</div>`; return; }
-  box.innerHTML = list.map(c=>{
+  const byName = ctSort === "name";
+  const letterOf = c=>{ const ch = (c.name||"").trim().charAt(0).toUpperCase(); return /[A-Z]/.test(ch) ? ch : "#"; };
+  list.sort(byName
+    ? (a,b)=> { const la = letterOf(a), lb = letterOf(b); return (la==="#") - (lb==="#") || a.name.localeCompare(b.name); }
+    : (a,b)=> seenScore(b.ent) - seenScore(a.ent) || a.name.localeCompare(b.name));
+  const sortIcon = byName
+    ? '<svg viewBox="0 0 24 24"><path d="M3 6h12"/><path d="M3 12h9"/><path d="M3 18h6"/><circle cx="18" cy="16" r="4"/><path d="M18 14.3V16l1.2 1"/></svg>'
+    : '<svg viewBox="0 0 24 24"><path d="M3 6h12"/><path d="M3 12h9"/><path d="M3 18h6"/><path d="m15 20 3-8 3 8"/><path d="M16 17.5h4"/></svg>';
+  let lastL = "";
+  const rows = list.map(c=>{
     const st = statusText(c.ent);
     const av = avatarCache.get(c.cid);
-    return `<div class="dialog-item" data-id="${escHtml(c.cid)}">
+    let letter = "";
+    if(byName){ const L = letterOf(c); letter = `<div class="ct-letter">${L!==lastL?escHtml(L):""}</div>`; lastL = L; }
+    return `<div class="ct-row dialog-item" data-id="${escHtml(c.cid)}">
+      ${letter}
       <div class="d-avatar" style="background:${nameColor(c.name)}">${av?`<img src="${av}" alt=""/>`:escHtml(avatarInitial(c.name))}${st.on?'<span class="online-dot"></span>':""}</div>
-      <div class="d-info"><div class="d-name">${escHtml(c.name)}</div><div class="ct-status${st.on?" online":""}">${escHtml(st.t)}</div></div>
+      <div class="ct-info"><div class="ct-name">${escHtml(c.name)}</div><div class="ct-status${st.on?" online":""}">${escHtml(st.t)}</div></div>
     </div>`;
   }).join("");
+  box.innerHTML = `<div class="ct-card">
+    <div class="ct-head"><span>${byName ? "Disusun ikut nama" : "Disusun ikut masa terakhir dilihat"}</span>
+      <button class="ct-sort" title="Tukar susunan">${sortIcon}</button></div>
+    ${rows}
+  </div>`;
+  box.querySelector(".ct-sort").onclick = (e)=>{
+    e.stopPropagation();
+    ctSort = byName ? "seen" : "name";
+    try{ localStorage.setItem("mg-ct-sort", ctSort); }catch(_){}
+    renderContacts();
+  };
   box.querySelectorAll(".dialog-item").forEach(n=>{
     const c = list.find(x=>x.cid===n.dataset.id);
     n.onclick = ()=>{
