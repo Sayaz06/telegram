@@ -225,8 +225,10 @@ a{color:var(--accent);text-decoration:none}
 
 /* ── MESSAGES AREA ───────────────────────────────────────────── */
 #msgs-wrap{flex:1;overflow-y:auto;padding:8px 12px;display:flex;flex-direction:column;gap:2px}
-.date-divider{text-align:center;padding:6px 0;color:var(--pill-fg);font-size:13px;font-weight:500;position:sticky;top:0;z-index:1}
+.day-group{display:flex;flex-direction:column;gap:2px}
+.date-divider{text-align:center;padding:6px 0;color:var(--pill-fg);font-size:13px;font-weight:500;position:sticky;top:0;z-index:2;transition:opacity .35s ease;pointer-events:none}
 .date-divider span{background:var(--pill);border-radius:12px;padding:3px 10px}
+#msgs-wrap:not(.is-scrolling) .date-divider.stuck{opacity:0}
 
 /* ── BUBBLE ──────────────────────────────────────────────────── */
 .msg-row{display:flex;gap:6px;max-width:100%;padding:1px 0}
@@ -592,7 +594,7 @@ a{color:var(--accent);text-decoration:none}
     <nav id="bottom-nav">
       <button class="nav-btn active" data-tab="chats"><svg viewBox="0 0 24 24"><path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/></svg>Chat</button>
       <button class="nav-btn" data-tab="contacts"><svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>Kenalan</button>
-      <button class="nav-btn" data-tab="settings"><svg viewBox="0 0 24 24"><path d="M19.14 12.94a7.07 7.07 0 0 0 0-1.88l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.61-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.84a.5.5 0 0 0-.49.42l-.36 2.54c-.59.24-1.130.56-1.62.94l-2.39-.96a.5.5 0 0 0-.61.22L2.67 8.48a.5.5 0 0 0 .12.64l2.03 1.58a7.07 7.07 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.43.32.61.22l2.39-.96c.49.38 1.03.7 1.62.94l.36 2.54c.05.24.25.42.49.42h3.84c.24 0 .44-.18.49-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .61-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z"/></svg>Tetapan</button>
+      <button class="nav-btn" data-tab="settings"><svg viewBox="0 0 24 24"><path d="M19.14 12.94a7.07 7.07 0 0 0 0-1.88l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.61-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.84a.5.5 0 0 0-.49.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 0 0-.61.22L2.67 8.48a.5.5 0 0 0 .12.64l2.03 1.58a7.07 7.07 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.43.32.61.22l2.39-.96c.49.38 1.03.7 1.62.94l.36 2.54c.05.24.25.42.49.42h3.84c.24 0 .44-.18.49-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .61-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z"/></svg>Tetapan</button>
       <button class="nav-btn" data-tab="me"><span class="nav-me" id="nav-me">?</span>Profil</button>
     </nav>
   </div>
@@ -1730,28 +1732,54 @@ function renderMessages(chatId, arr, keepScroll){
   LM_BTN.hidden = (arr.length < 30) || !tgReady;
   wrap.appendChild(LM_BTN);
 
+  // Setiap hari dalam kumpulan sendiri — tarikh "melekat" hanya dalam harinya,
+  // jadi tarikh baru akan menolak tarikh lama keluar (macam Telegram)
   let lastDate = null;
+  let group = null;
   arr.forEach((msg, i)=>{
     const msgDate = msg.date ? fmtDate(msg.date) : "";
-    if(msgDate !== lastDate){
+    if(msgDate !== lastDate || !group){
       lastDate = msgDate;
+      group = document.createElement("div");
+      group.className = "day-group";
       const divider = document.createElement("div");
       divider.className = "date-divider";
       divider.innerHTML = `<span>${escHtml(msgDate)}</span>`;
-      wrap.appendChild(divider);
+      group.appendChild(divider);
+      wrap.appendChild(group);
     }
     if(msg.service){
       const s = document.createElement("div");
       s.className = "service-msg";
       s.innerHTML = `<span>${escHtml(msg.text)}</span>`;
-      wrap.appendChild(s);
+      group.appendChild(s);
       return;
     }
-    wrap.appendChild(buildMsgElement(msg, i>0 ? arr[i-1] : null));
+    group.appendChild(buildMsgElement(msg, i>0 ? arr[i-1] : null));
   });
   if(keepScroll) wrap.scrollTop = wrap.scrollHeight - fromBottom;
   observeMedia();
+  requestAnimationFrame(markStuckDates);
 }
+
+// Tarikh terapung: nampak masa skrol, hilang bila berhenti skrol
+function markStuckDates(){
+  const wrap = el("msgs-wrap");
+  const top = wrap.getBoundingClientRect().top;
+  wrap.querySelectorAll(".day-group").forEach(g=>{
+    const d = g.firstElementChild;
+    if(!d) return;
+    d.classList.toggle("stuck", g.getBoundingClientRect().top < top - 2);
+  });
+}
+let scrollIdleTimer = null;
+el("msgs-wrap").addEventListener("scroll", ()=>{
+  const wrap = el("msgs-wrap");
+  wrap.classList.add("is-scrolling");
+  markStuckDates();
+  clearTimeout(scrollIdleTimer);
+  scrollIdleTimer = setTimeout(()=> wrap.classList.remove("is-scrolling"), 1200);
+}, { passive:true });
 
 function buildMsgElement(msg, prevMsg){
   const isOut = msg.out === true;
@@ -1828,7 +1856,7 @@ function buildBubbleContent(msg){
   if(t==="photo" || t==="video" || t==="gif" || t==="sticker" || t==="round"){
     let inner;
     if(src){
-      if(t==="gif") inner = `<video src="${src}" autoplay loop muted playsinline></video>`;
+      if(t==="gif" || videoUrls.has(src)) inner = `<video src="${src}" autoplay loop muted playsinline></video>`;
       else inner = `<img src="${src}" alt=""/>`;
     } else {
       const strip = strippedUrl(rawMsgs[activeChatId]?.get(msg.id), key);
@@ -1945,6 +1973,7 @@ function strippedUrl(m, key){
   strippedCache.set(key, url);
   return url;
 }
+const videoUrls = new Set();   // url pratonton yang sebenarnya video (sticker webm)
 async function downloadPreview(cid, id, kind, small){
   const key = cid+":"+id+(small?":g":"");
   if(mediaCache.has(key)) return mediaCache.get(key);
@@ -1953,6 +1982,7 @@ async function downloadPreview(cid, id, kind, small){
   if(saved instanceof Blob){
     const u = URL.createObjectURL(saved);
     mediaCache.set(key, u);
+    if((saved.type||"").startsWith("video/")) videoUrls.add(u);
     return u;
   }
   const m = rawMsgs[cid]?.get(id);
@@ -1961,6 +1991,9 @@ async function downloadPreview(cid, id, kind, small){
   let buf, mime = "image/jpeg";
   if(kind==="photo" && !info.isDocPhoto){
     buf = await client.downloadMedia(m, { thumb: bestPhotoThumb(m, small) });
+  } else if(kind==="sticker" && info.mime==="video/webm" && info.fileSize < 1024*1024){
+    // Sticker video (webm) — muat turun penuh, main sebagai video
+    buf = await client.downloadMedia(m, {}); mime = "video/webm";
   } else if(kind==="sticker" && !info.animated){
     buf = await client.downloadMedia(m, {}); mime = info.mime || "image/webp";
   } else if(kind==="gif" && info.fileSize < 3*1024*1024){
@@ -1968,13 +2001,17 @@ async function downloadPreview(cid, id, kind, small){
   } else if(kind==="photo" && info.isDocPhoto && info.fileSize < 3*1024*1024){
     buf = await client.downloadMedia(m, {}); mime = info.mime;
   } else if(info.hasThumb){
-    const n = (m.media.document.thumbs||[]).length;
-    buf = await client.downloadMedia(m, { thumb: n-1 });
+    // Pilih thumbnail gambar sebenar (bukan PhotoPathSize yang hanya garis luar)
+    const th = m.media.document.thumbs || [];
+    let idx = -1;
+    for(let i=th.length-1;i>=0;i--){ if(th[i].className!=="PhotoPathSize" && th[i].className!=="PhotoStrippedSize"){ idx = i; break; } }
+    if(idx>=0) buf = await client.downloadMedia(m, { thumb: idx });
   }
   if(!buf || !buf.length) return null;
   const blob = new Blob([buf], { type: mime });
   const url = URL.createObjectURL(blob);
   mediaCache.set(key, url);
+  if(mime.startsWith("video/")) videoUrls.add(url);
   if(blob.size < 400*1024) cacheSet("th:"+key, blob);
   return url;
 }
@@ -1999,7 +2036,7 @@ function observeMedia(){
           if(!url){ node.textContent = node.dataset.kind==="sticker"?"🖼":"📎"; node.classList.add("none"); return; }
           const msg = (chatMsgs[cid]||[]).find(x=>x.id===id);
           if(msg) msg.mediaUrl = url;
-          node.outerHTML = node.dataset.kind==="gif" ? `<video src="${url}" autoplay loop muted playsinline></video>` : `<img src="${url}" alt=""/>`;
+          node.outerHTML = (node.dataset.kind==="gif" || videoUrls.has(url)) ? `<video src="${url}" autoplay loop muted playsinline></video>` : `<img src="${url}" alt=""/>`;
         }).catch(()=>{ dlPending.delete(key); });
       });
     }, { root: el("msgs-wrap"), rootMargin: "300px" });
