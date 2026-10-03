@@ -422,8 +422,22 @@ div#ctx-menu.msg-menu{gap:12px}
 .pin-body{flex:1;min-width:0}
 .pin-title{color:var(--accent);font-weight:600;font-size:15.5px}
 .pin-text{color:var(--fg2);font-size:15.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#pin-close{width:42px;height:42px;display:flex;align-items:center;justify-content:center;color:var(--fg3);background:none;border:none;flex-shrink:0}
-#pin-close svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+#pin-close{width:46px;height:42px;display:flex;align-items:center;justify-content:center;color:var(--fg2);background:none;border:none;flex-shrink:0}
+#pin-close svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+/* Halaman senarai mesej disemat (macam Telegram) */
+#chat-view.pin-open>:not(#pin-page){visibility:hidden}
+#pin-page{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;animation:pinPageIn .28s cubic-bezier(.2,.8,.2,1)}
+@keyframes pinPageIn{from{transform:translateX(100%)}to{transform:none}}
+#pin-page-top{position:absolute;top:0;left:0;right:0;z-index:2;display:flex;align-items:center;gap:8px;padding:8px 10px 6px}
+#pin-page-title{height:50px;padding:0 22px;display:flex;align-items:center;border-radius:26px;background:var(--bar-bg);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-shadow:var(--bar-shadow);font-size:18px;font-weight:600;color:var(--fg);white-space:nowrap}
+#pin-page-list{flex:1;overflow-y:auto;overflow-x:hidden;padding:72px 12px 84px;display:flex;flex-direction:column;gap:6px}
+#pin-page-list .msg-row{align-items:center;cursor:default}
+#pin-page-list .msg-row.out{flex-direction:row}
+#pin-page-list .msg-row.out .msg-bubble-wrap{align-items:flex-start}
+.pin-go{width:40px;height:40px;border-radius:50%;flex-shrink:0;align-self:center;margin-left:6px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.35);color:#fff;border:none}
+.pin-go svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+#pin-unpin-all{position:absolute;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:2;height:54px;border-radius:27px;background:var(--bar-bg);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-shadow:var(--bar-shadow);border:none;font-size:17px;font-weight:600;color:var(--fg2)}
+#pin-unpin-all.confirm{color:var(--danger)}
 .msg-pin{display:inline-flex;color:var(--fg3);margin-right:1px}
 .msg-row.out .msg-pin{color:var(--out-meta)}
 .msg-pin svg{width:13px;height:13px;fill:currentColor;transform:rotate(45deg)}
@@ -908,7 +922,7 @@ div#ctx-menu.msg-menu{gap:12px}
           <div class="pin-title" id="pin-title">Mesej Disemat</div>
           <div class="pin-text" id="pin-text"></div>
         </div>
-        <button id="pin-close" title="Sembunyi"><svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+        <button id="pin-close" title="Senarai mesej disemat"><svg viewBox="0 0 28 24"><path d="M7 4.5 4.6 10.8l-2.1.3 3.3 3.3-2.6 5.1 5.1-2.6 3.3 3.3.3-2.1L18.9 15.7z"/><path d="M17 6h9"/><path d="M19 12h7"/><path d="M17 18h9"/></svg></button>
       </div>
 
       <!-- Carian dalam chat -->
@@ -929,6 +943,16 @@ div#ctx-menu.msg-menu{gap:12px}
       <!-- Messages -->
       <div id="msgs-wrap">
         <button id="load-more-btn" hidden>⬆ Muat mesej lama</button>
+      </div>
+
+      <!-- Halaman senarai mesej disemat -->
+      <div id="pin-page" hidden>
+        <div id="pin-page-top">
+          <button class="bar-circle" id="pin-page-back" title="Kembali"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></button>
+          <div id="pin-page-title">Mesej Disemat</div>
+        </div>
+        <div id="pin-page-list"></div>
+        <button id="pin-unpin-all">Nyahsemat semua mesej</button>
       </div>
 
       <!-- Input area -->
@@ -4141,21 +4165,22 @@ async function loadPins(cid){
   try{
     const ent = entities.get(cid);
     if(!ent) return;
-    const res = await client.getMessages(ent, { filter: new Api.InputMessagesFilterPinned(), limit: 20 });
+    const res = await client.getMessages(ent, { filter: new Api.InputMessagesFilterPinned(), limit: 50 });
     if(cid !== activeChatId) return;
-    const list = res.filter(m=> m && m.className!=="MessageService")
-      .map(m=> ({ id: String(m.id), text: (m.message || msgPreview(m) || "Mesej").replace(/\s+/g," ") }));
-    pinState = { cid, list, idx: 0 };
+    const raws = res.filter(m=> m && m.className!=="MessageService");
+    if(!rawMsgs[cid]) rawMsgs[cid] = new Map();
+    raws.forEach(m=> rawMsgs[cid].set(String(m.id), m));
+    const list = raws.map(m=> ({ id: String(m.id), text: (m.message || msgPreview(m) || "Mesej").replace(/\s+/g," ") }));
+    pinState = { cid, list, idx: 0, raws };
     cacheSet("pins:"+cid, list);
     renderPinBar();
+    if(!el("pin-page").hidden) renderPinPage();
   }catch(e){ console.warn("pins", e); }
 }
 function renderPinBar(){
   const bar = el("pin-bar");
   const L = pinState.list || [];
-  let hid = "";
-  try{ hid = localStorage.getItem("mg-pin-hide-"+pinState.cid) || ""; }catch(e){}
-  if(pinState.cid !== activeChatId || !L.length || hid === L[0].id){ bar.hidden = true; return; }
+  if(pinState.cid !== activeChatId || !L.length){ bar.hidden = true; return; }
   const i = Math.min(pinState.idx, L.length-1);
   el("pin-title").textContent = L.length > 1 ? `Mesej Disemat #${L.length - i}` : "Mesej Disemat";
   el("pin-text").textContent = L[i].text;
@@ -4171,12 +4196,81 @@ el("pin-bar").onclick = ()=>{
   pinState.idx = (pinState.idx + 1) % L.length;
   renderPinBar();
 };
-el("pin-close").onclick = (e)=>{
+// Butang senarai → halaman semua mesej disemat (macam Telegram)
+el("pin-close").onclick = (e)=>{ e.stopPropagation(); openPinPage(); };
+function openPinPage(){
+  if(!activeChatId) return;
+  el("pin-page").hidden = false;
+  el("chat-view").classList.add("pin-open");
+  el("pin-unpin-all").classList.remove("confirm");
+  el("pin-unpin-all").textContent = "Nyahsemat semua mesej";
+  el("pin-unpin-all").hidden = !tgReady || !!activeChatData?.isChannel;
+  try{ history.pushState({ pinpage:1 }, ""); }catch(_){}
+  renderPinPage();
+  if(!pinState.raws) loadPins(activeChatId);
+}
+function closePinPage(fromPop){
+  if(el("pin-page").hidden) return;
+  el("pin-page").hidden = true;
+  el("chat-view").classList.remove("pin-open");
+  el("pin-page-list").innerHTML = "";
+  if(!fromPop && history.state && history.state.pinpage){ pinIgnorePop = true; history.back(); }
+}
+var pinIgnorePop = false;
+function renderPinPage(){
+  const box = el("pin-page-list");
+  const raws = (pinState.raws || []).slice().reverse();   // lama di atas, baru di bawah
+  const n = (pinState.list || []).length;
+  el("pin-page-title").textContent = n + " Mesej Disemat";
+  if(!raws.length){
+    box.innerHTML = `<div class="msgs-note">${pinState.raws ? "Tiada mesej disemat" : "Memuatkan..."}</div>`;
+    return;
+  }
+  const cid = activeChatId;
+  const msgs = raws.map(m=> toMsg(m, cid));
+  box.innerHTML = "";
+  msgs.forEach(msg=>{
+    const row = buildMsgElement(msg, null, null).cloneNode(true);   // salinan tanpa tindakan menu
+    row.classList.remove("cont-prev","cont-next","alb-prev","alb-next","selected");
+    row.removeAttribute("data-msg-id");
+    const go = document.createElement("button");
+    go.className = "pin-go";
+    go.title = "Pergi ke mesej";
+    go.innerHTML = '<svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>';
+    go.onclick = ()=>{ closePinPage(); jumpToMessage(Number(msg.id)); };
+    row.appendChild(go);
+    box.appendChild(row);
+  });
+  // muat pratonton gambar/sticker dalam halaman ini
+  box.querySelectorAll(".media-ph[data-key]").forEach(ph=>{
+    const key = ph.dataset.key, id = key.slice(key.lastIndexOf(":")+1);
+    queueDownload(()=> downloadPreview(cid, id, ph.dataset.kind)).then(url=>{
+      if(!url || !ph.isConnected) return;
+      ph.outerHTML = (ph.dataset.kind==="gif" || videoUrls.has(url)) ? `<video src="${url}" autoplay loop muted playsinline></video>` : `<img src="${url}" alt=""/>`;
+    }).catch(()=>{});
+  });
+}
+el("pin-page-back").onclick = (e)=>{ e.stopPropagation(); closePinPage(); };
+el("pin-unpin-all").onclick = async (e)=>{
   e.stopPropagation();
-  const L = pinState.list || [];
-  if(L.length){ try{ localStorage.setItem("mg-pin-hide-"+pinState.cid, L[0].id); }catch(_){} }
-  el("pin-bar").hidden = true;
-  toast("Disembunyikan — akan muncul semula bila ada semat baru");
+  const b = el("pin-unpin-all");
+  if(!b.classList.contains("confirm")){
+    b.classList.add("confirm");
+    b.textContent = "Tekan sekali lagi untuk nyahsemat semua";
+    setTimeout(()=>{ b.classList.remove("confirm"); b.textContent = "Nyahsemat semua mesej"; }, 3500);
+    return;
+  }
+  const cid = activeChatId;
+  try{
+    await client.invoke(new Api.messages.UnpinAllMessages({ peer: entities.get(cid) }));
+    (chatMsgs[cid]||[]).forEach(m=> m.pinned = false);
+    pinState = { cid, list: [], idx: 0, raws: [] };
+    cacheSet("pins:"+cid, []);
+    renderPinBar();
+    closePinPage();
+    if(cid === activeChatId) renderMessages(cid, chatMsgs[cid]||[], true);
+    toast("Semua mesej dinyahsemat");
+  }catch(err){ toast("Gagal: "+(err.message||err)); }
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -4376,6 +4470,7 @@ el("btn-close-media").onclick = ()=>{
 function closeChat(){
   if(selMode) exitSelect(true);
   closePopups();
+  closePinPage(true);
   activeChatId = null;
   applyWallpaper();
   closePanel(false);
@@ -4392,7 +4487,9 @@ el("back-btn").onclick = (e)=>{
 window.addEventListener("popstate", ()=>{
   if(selIgnorePop){ selIgnorePop = false; return; }
   if(searchIgnorePop){ searchIgnorePop = false; return; }
+  if(pinIgnorePop){ pinIgnorePop = false; return; }
   if(!el("media-viewer").hidden){ el("btn-close-media").onclick(); return; }
+  if(!el("pin-page").hidden){ closePinPage(true); return; }
   if(selMode){ exitSelect(true); return; }
   if(!el("ctx-menu").hidden){ hideCtx(); }
   if(searchMode && !activeChatId){ exitSearchMode(true); return; }
