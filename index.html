@@ -176,6 +176,17 @@ a{color:var(--accent);text-decoration:none}
 .nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 0 6px;border-radius:24px;font-size:12px;font-weight:600;color:var(--fg)}
 .nav-btn svg{width:24px;height:24px;fill:currentColor}
 .nav-btn.active{background:var(--nav-active);color:var(--accent)}
+/* Tukar tab (Chat/Kenalan/Tetapan/Profil) — gelongsor kiri/kanan macam Telegram */
+#sidebar{overflow:hidden}
+#sidebar .tab-leaving{position:absolute!important;left:0;right:0;bottom:0;z-index:4;background:var(--sidebar-bg);pointer-events:none}
+#sidebar .tab-leaving.go-left{animation:tabOutLeft .3s cubic-bezier(.2,.8,.2,1) forwards}
+#sidebar .tab-leaving.go-right{animation:tabOutRight .3s cubic-bezier(.2,.8,.2,1) forwards}
+#sidebar.tab-go-left>#sidebar-header,#sidebar.tab-go-left>#search-wrap,#sidebar.tab-go-left>#dialog-list:not(.tab-leaving),#sidebar.tab-go-left>.pane:not(.tab-leaving){animation:tabInRight .3s cubic-bezier(.2,.8,.2,1)}
+#sidebar.tab-go-right>#sidebar-header,#sidebar.tab-go-right>#search-wrap,#sidebar.tab-go-right>#dialog-list:not(.tab-leaving),#sidebar.tab-go-right>.pane:not(.tab-leaving){animation:tabInLeft .3s cubic-bezier(.2,.8,.2,1)}
+@keyframes tabInRight{from{transform:translateX(100%)}to{transform:none}}
+@keyframes tabInLeft{from{transform:translateX(-100%)}to{transform:none}}
+@keyframes tabOutLeft{from{transform:none}to{transform:translateX(-100%)}}
+@keyframes tabOutRight{from{transform:none}to{transform:translateX(100%)}}
 .nav-me{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;overflow:hidden;background:var(--danger)}
 .nav-me img{width:100%;height:100%;object-fit:cover}
 .set-card{background:var(--surface);margin:8px 0}
@@ -1667,7 +1678,38 @@ el("search-inp").oninput = e=>{
 // ══════════════════════════════════════════════════════════════════
 let curTab = "chats";
 const extraChats = new Map();   // chat yang dibuka dari Kenalan (belum ada dalam senarai)
+const TAB_ORDER = ["chats","contacts","settings","me"];
+function tabPane(t){ return t==="chats" ? el("dialog-list") : el("pane-"+t); }
+function tabSlide(from, to){
+  const a = TAB_ORDER.indexOf(from), b = TAB_ORDER.indexOf(to);
+  if(a < 0 || b < 0 || a === b) return;
+  const dir = b > a ? "left" : "right";
+  const sb = el("sidebar");
+  const oldP = tabPane(from), newP = tabPane(to);
+  // bersihkan animasi sebelum ni (kalau tekan laju-laju)
+  clearTimeout(sb._tabT);
+  sb.querySelectorAll(".tab-leaving").forEach(p=>{
+    p.classList.remove("tab-leaving","go-left","go-right"); p.style.top = "";
+    if(p !== newP) p.hidden = true;
+  });
+  sb.classList.remove("tab-go-left","tab-go-right");
+  void sb.offsetWidth;
+  // skrin lama kekal & gelongsor keluar, skrin baru gelongsor masuk
+  if(oldP && oldP !== newP){
+    const st = oldP.scrollTop;
+    oldP.classList.add("tab-leaving", "go-"+dir);
+    oldP.style.top = (newP ? newP.offsetTop : 0) + "px";
+    oldP.hidden = false;
+    oldP.scrollTop = st;
+  }
+  sb.classList.add("tab-go-" + dir);
+  sb._tabT = setTimeout(()=>{
+    sb.classList.remove("tab-go-left","tab-go-right");
+    if(oldP){ oldP.classList.remove("tab-leaving","go-left","go-right"); oldP.style.top = ""; if(curTab !== from) oldP.hidden = true; }
+  }, 320);
+}
 function setTab(tab){
+  const prevTab = curTab;
   curTab = tab;
   document.querySelectorAll(".nav-btn").forEach(b=> b.classList.toggle("active", b.dataset.tab===tab));
   el("dialog-list").hidden = tab!=="chats";
@@ -1682,6 +1724,7 @@ function setTab(tab){
   if(tab==="contacts") loadContacts();
   if(tab==="settings") renderSettings();
   if(tab==="me") renderMe();
+  if(prevTab !== tab) tabSlide(prevTab, tab);
 }
 document.querySelectorAll(".nav-btn").forEach(b=>{ b.onclick = ()=> setTab(b.dataset.tab); });
 
