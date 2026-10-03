@@ -402,11 +402,8 @@ a{color:var(--accent);text-decoration:none}
 
   <div class="login-card">
     <div id="fb-login-wrap">
-      <label>Emel</label>
-      <div class="inp-wrap">
-        <input type="email" id="inp-email" placeholder="adha86614@gmail.com" inputmode="email" autocomplete="email"/>
-      </div>
-      <label>Kata Laluan</label>
+      <input type="email" id="inp-email" value="adha86614@gmail.com" autocomplete="username" hidden/>
+      <label>Kata Laluan Admin</label>
       <div class="inp-wrap">
         <input type="password" id="inp-fbpass" placeholder="Kata laluan" autocomplete="current-password"/>
       </div>
@@ -763,24 +760,25 @@ function showLoginStep(step){
   el("tg-pass-wrap").hidden = step!=="pass";
 }
 
+const ADMIN_EMAIL = "adha86614@gmail.com";
+el("inp-fbpass").addEventListener("keydown", e=>{ if(e.key==="Enter") el("btn-fb-login").click(); });
 el("btn-fb-login").onclick = async ()=>{
-  const email = el("inp-email").value.trim();
+  const email = ADMIN_EMAIL;
   const pass  = el("inp-fbpass").value;
-  if(!email||!pass){ toast("Isi emel dan kata laluan"); return; }
+  if(!pass){ toast("Masukkan kata laluan"); return; }
   el("btn-fb-login").disabled = true;
   setLoginStatus("Mengesahkan...");
   try{
     await auth.signInWithEmailAndPassword(email, pass);
   }catch(e){
     const c = e.code||"";
-    setLoginStatus("Gagal: " + (c.includes("wrong-password")||c.includes("invalid-credential")?"Emel atau kata laluan salah":c.includes("user-not-found")?"Emel tidak dijumpai":e.message));
+    setLoginStatus("Gagal: " + (c.includes("wrong-password")||c.includes("invalid-credential")?"Kata laluan salah":c.includes("too-many-requests")?"Terlalu banyak cubaan, cuba sebentar lagi":c.includes("user-not-found")?"Akaun admin tidak dijumpai":e.message));
     el("btn-fb-login").disabled = false;
   }
 };
 el("btn-fb-reset").onclick = async ()=>{
-  const email = el("inp-email").value.trim();
-  if(!email){ toast("Masukkan emel dulu"); return; }
-  try{ await auth.sendPasswordResetEmail(email); toast("Emel reset dihantar!"); }
+  const email = ADMIN_EMAIL;
+  try{ await auth.sendPasswordResetEmail(email); toast("Pautan reset dihantar ke emel admin"); }
   catch(e){ toast("Gagal: "+e.message); }
 };
 el("btn-logout").onclick = async ()=>{
