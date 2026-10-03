@@ -334,10 +334,16 @@ div#reaction-picker{background:var(--bar-solid);border:none;border-radius:30px;b
 #sel-close{background:var(--bar-bg)}
 #sel-bar svg,#sel-actions svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 #sel-actions{display:flex;gap:10px;padding:0 2px}
-.sel-big{flex:1;height:52px;border-radius:26px;background:var(--bar-bg);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-shadow:var(--bar-shadow);display:flex;align-items:center;justify-content:center;gap:10px;font-size:17px;font-weight:600;color:var(--fg);border:none}
+.sel-big{flex:1;height:54px;border-radius:27px;background:var(--bar-bg);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-shadow:var(--bar-shadow);display:flex;align-items:center;justify-content:center;gap:10px;font-size:17px;font-weight:600;color:var(--fg);border:none}
 #chat-view.sel-mode #chat-header,#chat-view.sel-mode #input-row,#chat-view.sel-mode #reply-bar,#chat-view.sel-mode #emoji-picker,#chat-view.sel-mode #voice-overlay{display:none!important}
 .sel-check{display:none}
-#chat-view.sel-mode .msg-row{position:relative;padding-left:42px;isolation:isolate;cursor:pointer}
+/* Mod pilih: saiz gelembung TAK berubah — mesej masuk cuma digeser ke kanan (macam Telegram), jadi chat tak melompat */
+#chat-view.sel-mode .msg-row{position:relative;isolation:isolate;cursor:pointer}
+#chat-view .msg-row.in>.msg-avatar-sm,#chat-view .msg-row.in>.msg-bubble-wrap{transition:transform .2s ease}
+#chat-view.sel-mode .msg-row.in>.msg-avatar-sm,#chat-view.sel-mode .msg-row.in>.msg-bubble-wrap{transform:translateX(40px)}
+/* Mesej masuk sentiasa tinggal ruang kosong di kanan, supaya bila digeser (mod pilih) ia tak terkeluar skrin */
+#chat-view .msg-row.in .msg-bubble-wrap{max-width:min(86%, calc(100% - 48px))}
+#chat-view .msg-row.in:has(.msg-avatar-sm) .msg-bubble-wrap{max-width:calc(100% - 96px)}
 #chat-view.sel-mode .sel-check{display:block;position:absolute;left:2px;bottom:8px;width:26px;height:26px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 3px rgba(0,0,0,.45)}
 #chat-view.sel-mode .msg-row.selected .sel-check{background:#3fb950;border-color:#fff}
 #chat-view.sel-mode .msg-row.selected .sel-check::after{content:"";position:absolute;left:7px;top:3px;width:6px;height:11px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
