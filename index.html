@@ -160,19 +160,26 @@ a{color:var(--accent);text-decoration:none}
 #search-inp{width:100%;background:var(--hover);border-radius:20px;padding:8px 14px;font-size:13px;color:var(--fg)}
 #search-inp::placeholder{color:var(--fg3)}
 /* ── Header & carian: tinggi sama (56px) supaya carian boleh "naik" ganti tajuk (macam Telegram) ── */
-#sidebar-header{height:56px;padding:0 16px;box-sizing:border-box;transition:margin-top .3s cubic-bezier(.2,.8,.2,1),opacity .22s ease}
+#sidebar-header{height:56px;padding:0 16px;box-sizing:border-box;position:relative;z-index:1}
 #sidebar-header .app-name{font-size:22px}
-#search-wrap{position:relative;padding:6px 12px;box-sizing:border-box}
+#search-wrap{position:relative;z-index:3;height:56px;padding:6px 12px 5px;box-sizing:border-box;background:var(--sidebar-bg)}
 #search-inp{height:44px;border-radius:22px;padding:0 44px 0 46px;font-size:16px;box-sizing:border-box}
 #search-wrap .s-ic{position:absolute;left:28px;top:50%;transform:translateY(-50%);width:22px;height:22px;fill:none;stroke:var(--fg2);stroke-width:2.2;stroke-linecap:round;pointer-events:none}
 #search-x{display:none;position:absolute;right:18px;top:50%;transform:translateY(-50%);width:34px;height:34px;align-items:center;justify-content:center;border-radius:50%;color:var(--fg2);background:none;border:none}
 #search-x svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
 #sidebar.search-mode #search-x{display:flex}
-#sidebar.search-mode #sidebar-header{margin-top:-56px;opacity:0;pointer-events:none}
-#sidebar.search-mode #search-wrap{border-bottom:none}
-#gs-tabs-wrap{display:none;padding:0 12px 6px;border-bottom:1px solid var(--border)}
-#sidebar.search-mode #gs-tabs-wrap{display:block;animation:gsTabsIn .3s cubic-bezier(.2,.8,.2,1)}
-@keyframes gsTabsIn{from{opacity:0;transform:translateY(-24px)}to{opacity:1;transform:none}}
+/* Hanya kotak carian yang bergerak: naik menutup tajuk; tab carian memang sedia di belakangnya */
+#sidebar.search-mode #sidebar-header{position:absolute;top:0;left:0;right:0;pointer-events:none;transform-origin:16px 0;animation:hdrShrink .3s cubic-bezier(.2,.8,.2,1) forwards}
+#sidebar.search-mode #search-wrap{border-bottom:none;padding-bottom:6px;animation:srchUp .3s cubic-bezier(.2,.8,.2,1)}
+#sidebar.search-leaving #search-wrap{animation:srchDown .3s cubic-bezier(.2,.8,.2,1)}
+#sidebar.search-leaving #sidebar-header{transform-origin:16px 0;animation:hdrGrow .3s cubic-bezier(.2,.8,.2,1)}
+#gs-tabs-wrap{display:none;position:relative;z-index:2;height:56px;padding:0 12px 11px;box-sizing:border-box;border-bottom:1px solid var(--border);background:var(--sidebar-bg)}
+#sidebar.search-mode #gs-tabs-wrap{display:block}
+#sidebar.search-leaving #gs-tabs-wrap{display:block;position:absolute;top:56px;left:0;right:0}
+@keyframes srchUp{from{transform:translateY(56px)}to{transform:none}}
+@keyframes srchDown{from{transform:translateY(-56px)}to{transform:none}}
+@keyframes hdrShrink{from{transform:none;opacity:1}to{transform:scale(.35);opacity:0}}
+@keyframes hdrGrow{from{transform:scale(.35);opacity:0}to{transform:none;opacity:1}}
 #gs-tabs{display:flex;gap:2px;height:44px;align-items:center;padding:0 4px;border-radius:22px;background:var(--hover);overflow-x:auto;scrollbar-width:none;box-sizing:border-box}
 #gs-tabs::-webkit-scrollbar{display:none}
 #gs-tabs button{flex-shrink:0;height:36px;padding:0 16px;border-radius:18px;font-size:15px;font-weight:600;color:var(--fg2);background:none;border:none}
@@ -1710,7 +1717,11 @@ function exitSearchMode(fromPop){
   if(!searchMode) return;
   searchMode = false;
   clearTimeout(gsTimer);
-  el("sidebar").classList.remove("search-mode");
+  const sbL = el("sidebar");
+  sbL.classList.remove("search-mode");
+  sbL.classList.add("search-leaving");
+  clearTimeout(sbL._srchT);
+  sbL._srchT = setTimeout(()=> sbL.classList.remove("search-leaving"), 320);
   el("search-inp").value = "";
   searchQuery = "";
   gsTab = "chats";
