@@ -232,13 +232,25 @@ a{color:var(--accent);text-decoration:none}
 @keyframes tabOutRight{from{transform:none}to{transform:translateX(100%)}}
 .nav-me{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;overflow:hidden;background:var(--danger)}
 .nav-me img{width:100%;height:100%;object-fit:cover}
-.set-card{background:var(--surface);margin:8px 0}
-.set-row{display:flex;align-items:center;gap:16px;width:100%;padding:14px 18px;font-size:15px;text-align:left;color:var(--fg)}
-.set-row:hover{background:var(--hover)}
-.set-row .ic{width:26px;text-align:center;font-size:20px;flex-shrink:0}
-.set-row .sub{margin-left:auto;font-size:13px;color:var(--fg3)}
-.set-row.danger{color:var(--danger)}
-.set-foot{text-align:center;color:var(--fg3);font-size:12px;padding:16px}
+/* ── TETAPAN gaya Telegram ── */
+#sidebar.on-settings #sidebar-header{display:none}
+.set-hero{display:flex;flex-direction:column;align-items:center;gap:4px;padding:34px 16px 20px}
+.set-av{width:110px;height:110px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:44px;font-weight:600;overflow:hidden;background:var(--danger);margin-bottom:10px}
+.set-av img{width:100%;height:100%;object-fit:cover}
+.set-name{font-size:24px;font-weight:600;color:var(--fg);text-align:center}
+.set-phone{font-size:15px;color:var(--fg3)}
+.set-card{background:color-mix(in srgb,var(--fg) 5%,var(--sidebar-bg));margin:0 12px 14px;border-radius:20px;overflow:hidden;padding:4px 0}
+.set-row{display:flex;align-items:center;gap:18px;width:100%;padding:11px 18px;text-align:left;color:var(--fg);background:none;border:none}
+.set-row:hover,.set-row:active{background:var(--hover)}
+.set-row .ic{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;font-size:0}
+.set-row .ic svg{width:22px;height:22px;fill:currentColor}
+.set-row .tx{display:flex;flex-direction:column;min-width:0;gap:1px}
+.set-row .tx b{font-weight:400;font-size:16.5px}
+.set-row .sub{margin:0;font-size:14px;color:var(--fg3)}
+.set-row.danger .tx b{color:var(--danger)}
+.ic.c-blue{background:#2f95e8}.ic.c-orange{background:#f19a26}.ic.c-green{background:#45b74b}.ic.c-red{background:#e5484d}
+.ic.c-indigo{background:#4f7df0}.ic.c-teal{background:#20b3c3}.ic.c-purple{background:#8e6be8}.ic.c-grey{background:#6b7c8f}
+.set-foot{text-align:center;color:var(--fg3);font-size:12px;padding:6px 16px 16px}
 .ct-status{font-size:13px;color:var(--fg3)}
 .ct-status.online{color:var(--accent)}
 /* ── BAR ATAS & BAWAH CHAT TERAPUNG (macam Telegram) ─────────── */
@@ -857,18 +869,23 @@ div#ctx-menu.msg-menu{gap:12px}
 
     <!-- Tetapan -->
     <div id="pane-settings" class="pane" hidden>
-      <div class="set-card">
-        <button class="set-row" id="btn-theme"><span class="ic">🌙</span>Tema gelap<span class="sub" id="set-theme-sub"></span></button>
-        <button class="set-row" id="btn-notif"><span class="ic">🔔</span>Notifikasi<span class="sub" id="set-notif-sub"></span></button>
-        <button class="set-row" id="btn-sync"><span class="ic">🔄</span>Segerakkan semula<span class="sub">muat semula chat</span></button>
-        <button class="set-row" id="btn-clear-cache"><span class="ic">🧹</span>Kosongkan simpanan<span class="sub">gambar &amp; mesej</span></button>
+      <div class="set-hero">
+        <div class="set-av" id="set-av">?</div>
+        <div class="set-name" id="set-name"></div>
+        <div class="set-phone" id="set-phone"></div>
       </div>
       <div class="set-card">
-        <button class="set-row" id="btn-wp-global"><span class="ic">🖼</span>Latar belakang chat<span class="sub" id="set-wp-sub">Asal</span></button>
-        <button class="set-row" id="btn-wp-global-reset" hidden><span class="ic">↩</span>Guna latar asal</button>
+        <button class="set-row" id="btn-wp-global"><span class="ic c-orange"><svg viewBox="0 0 24 24"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-4.5z"/></svg></span><span class="tx"><b>Latar belakang chat</b><span class="sub" id="set-wp-sub">Asal</span></span></button>
+        <button class="set-row" id="btn-wp-global-reset" hidden><span class="ic c-grey"><svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z"/></svg></span><span class="tx"><b>Guna latar asal</b><span class="sub">Kembali ke wallpaper asal</span></span></button>
+        <button class="set-row" id="btn-theme"><span class="ic c-indigo"><svg viewBox="0 0 24 24"><path d="M12.3 2a10 10 0 1 0 9.7 12.4A7.5 7.5 0 0 1 12.3 2z"/></svg></span><span class="tx"><b>Mod malam</b><span class="sub" id="set-theme-sub"></span></span></button>
+        <button class="set-row" id="btn-notif"><span class="ic c-red"><svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05A4.47 4.47 0 0 0 16.5 12zM14 3.23v2.06a7 7 0 0 1 0 13.42v2.06A9 9 0 0 0 14 3.23z"/></svg></span><span class="tx"><b>Notifikasi</b><span class="sub" id="set-notif-sub"></span></span></button>
       </div>
       <div class="set-card">
-        <button class="set-row danger" id="btn-logout"><span class="ic">🚪</span>Log keluar</button>
+        <button class="set-row" id="btn-sync"><span class="ic c-green"><svg viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6a6 6 0 0 1 5.65 8.03l1.46 1.46A8 8 0 0 0 12 4zm0 14a6 6 0 0 1-5.65-8.03L4.89 8.51A8 8 0 0 0 12 20v3l4-4-4-4v3z"/></svg></span><span class="tx"><b>Segerakkan semula</b><span class="sub">Muat semula senarai chat</span></span></button>
+        <button class="set-row" id="btn-clear-cache"><span class="ic c-teal"><svg viewBox="0 0 24 24"><path d="M11 2v9.03A9 9 0 1 0 20.97 13H11V2zm2 0v9h9a9 9 0 0 0-9-9z"/></svg></span><span class="tx"><b>Data dan simpanan</b><span class="sub">Kosongkan gambar &amp; mesej tersimpan</span></span></button>
+      </div>
+      <div class="set-card">
+        <button class="set-row danger" id="btn-logout"><span class="ic c-red"><svg viewBox="0 0 24 24"><path d="M10.09 15.59 11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5a2 2 0 0 0-2 2v4h2V5h14v14H5v-4H3v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"/></svg></span><span class="tx"><b>Log keluar</b></span></button>
       </div>
       <div class="set-foot">MyGram · sambungan terus ke Telegram</div>
     </div>
@@ -1913,6 +1930,7 @@ function setTab(tab){
   const prevTab = curTab;
   curTab = tab;
   document.querySelectorAll(".nav-btn").forEach(b=> b.classList.toggle("active", b.dataset.tab===tab));
+  el("sidebar").classList.toggle("on-settings", tab==="settings");
   el("dialog-list").hidden = tab!=="chats";
   el("pane-contacts").hidden = tab!=="contacts";
   el("pane-settings").hidden = tab!=="settings";
@@ -2008,7 +2026,30 @@ function renderContacts(){
 }
 
 // ── Tetapan ──
+let setAvLoaded = false;
 function renderSettings(){
+  // Kepala profil (macam Telegram)
+  if(me){
+    const nm = [me.firstName, me.lastName].filter(Boolean).join(" ") || (me.username ? "@"+me.username : "Saya");
+    el("set-name").textContent = nm;
+    el("set-phone").textContent = me.phone ? "+" + me.phone : (me.username ? "@"+me.username : "");
+    const av = el("set-av");
+    av.style.background = nameColor(nm);
+    const meImg = document.querySelector("#me-avatar img");
+    if(meImg){ av.innerHTML = `<img src="${meImg.src}" alt=""/>`; }
+    else if(!av.querySelector("img")){
+      av.textContent = avatarInitial(nm);
+      if(!setAvLoaded && tgReady){
+        setAvLoaded = true;
+        client.downloadProfilePhoto(me, { isBig:false }).then(buf=>{
+          if(buf && buf.length) av.innerHTML = `<img src="${URL.createObjectURL(new Blob([buf],{type:"image/jpeg"}))}" alt=""/>`;
+        }).catch(()=>{ setAvLoaded = false; });
+      }
+    }
+  } else {
+    el("set-name").textContent = tgReady ? "" : "Belum bersambung";
+    el("set-phone").textContent = "";
+  }
   el("set-theme-sub").textContent = currentTheme()==="dark" ? "Hidup" : "Mati";
   const p = ("Notification" in window) ? Notification.permission : "unsupported";
   el("set-notif-sub").textContent = p==="granted" ? "Hidup" : p==="denied" ? "Disekat" : p==="unsupported" ? "Tidak disokong" : "Mati";
