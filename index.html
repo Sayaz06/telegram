@@ -2276,13 +2276,14 @@ function buildMsgElement(msg, prevMsg, nextMsg){
     bubble.classList.add("meta-inline");
   }
   let pressTimer;
+  // Seluruh baris (termasuk ruang kosong di tepi mesej) boleh ditekan — macam Telegram
   // Klik kanan (komputer) → menu. Tekan lama di phone → mod pilih.
-  bubble.addEventListener("contextmenu", e=>{
+  row.addEventListener("contextmenu", e=>{
     e.preventDefault();
     if(selMode || Date.now() - lastTouchAt < 1500) return;
     buildCtxMenu(msg, isOut, e.clientX, e.clientY);
   });
-  bubble.addEventListener("touchstart", ()=>{
+  row.addEventListener("touchstart", ()=>{
     lastTouchAt = Date.now();
     clearTimeout(pressTimer);
     pressTimer = setTimeout(()=>{
@@ -2292,11 +2293,11 @@ function buildMsgElement(msg, prevMsg, nextMsg){
     }, 450);
   }, { passive:true });
   const endPress = ()=>{ clearTimeout(pressTimer); if(suppressClickUntil===Infinity) suppressClickUntil = Date.now() + 400; };
-  bubble.addEventListener("touchend", endPress);
-  bubble.addEventListener("touchcancel", endPress);
-  bubble.addEventListener("touchmove", ()=> clearTimeout(pressTimer), { passive:true });
+  row.addEventListener("touchend", endPress);
+  row.addEventListener("touchcancel", endPress);
+  row.addEventListener("touchmove", ()=> clearTimeout(pressTimer), { passive:true });
   // Ketik sekali → menu reaksi + senarai (macam Telegram)
-  bubble.addEventListener("click", e=>{
+  row.addEventListener("click", e=>{
     if(selMode || Date.now() < suppressClickUntil) return;
     if(e.target.closest("a,button,[data-act],.reaction-chip,.reply-quote,video,audio")) return;
     e.stopPropagation();
