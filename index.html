@@ -252,6 +252,52 @@ a{color:var(--accent);text-decoration:none}
 #dl-modal .modal{background:var(--surface);border-radius:14px;padding:20px;max-width:340px;width:100%;display:flex;flex-direction:column;gap:10px}
 #dl-modal h3{font-size:16px;font-weight:600;word-break:break-all}
 #dl-modal p{color:var(--fg2);font-size:13px}
+/* ── MENU CHAT, CARIAN, PROFIL ─────────────────────────────── */
+#chat-view{position:relative}
+#chat-avatar,#chat-info{cursor:pointer}
+#chat-search-bar{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--surface);border-bottom:1px solid var(--border)}
+#chat-search-inp{flex:1;min-width:0;background:var(--hover);border-radius:18px;padding:8px 14px;font-size:16px;color:var(--fg)}
+#chat-search-count{font-size:12px;color:var(--fg3);white-space:nowrap}
+#chat-search-results{max-height:45vh;overflow-y:auto;background:var(--surface);border-bottom:1px solid var(--border)}
+.sr-item{padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer}
+.sr-item:hover{background:var(--hover)}
+.sr-top{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--fg3)}
+.sr-top b{color:var(--accent);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sr-text{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+.sr-text mark{background:rgba(255,193,7,.45);color:inherit;border-radius:2px}
+#jump-latest{position:absolute;right:14px;bottom:76px;z-index:20;background:var(--surface);color:var(--accent);border:1px solid var(--border);box-shadow:var(--shadow);border-radius:20px;padding:8px 14px;font-size:13px;font-weight:600}
+#profile-view{position:fixed;inset:0;background:var(--bg);z-index:450;display:flex;flex-direction:column}
+.pf-head{display:flex;align-items:center;gap:8px;padding:8px 10px;padding-top:calc(8px + env(safe-area-inset-top,0px));background:var(--surface);border-bottom:1px solid var(--border)}
+.pf-head .pf-title{flex:1;font-weight:600;font-size:16px}
+.pf-scroll{flex:1;overflow-y:auto;padding-bottom:24px}
+.pf-hero{display:flex;flex-direction:column;align-items:center;gap:6px;padding:24px 16px 16px;background:var(--surface)}
+.pf-avatar{width:120px;height:120px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:40px;font-weight:600;overflow:hidden;cursor:pointer}
+.pf-avatar img{width:100%;height:100%;object-fit:cover}
+.pf-name{font-size:22px;font-weight:600;text-align:center;text-wrap:balance}
+.pf-status{font-size:14px;color:var(--fg3)}
+.pf-status.online{color:var(--online)}
+.pf-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;max-width:420px;margin-top:12px}
+.pf-actions button{background:var(--hover);border-radius:12px;padding:10px 4px;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;font-weight:600;color:var(--accent)}
+.pf-actions button span{font-size:20px;line-height:1}
+.pf-card{background:var(--surface);margin-top:10px;padding:4px 0}
+.pf-row{padding:10px 18px;cursor:pointer}
+.pf-row .v{font-size:15px;word-break:break-word;white-space:pre-wrap}
+.pf-row .k{font-size:12px;color:var(--fg3);margin-top:2px}
+.pf-tabs{display:flex;gap:4px;padding:10px 12px 0;background:var(--surface);margin-top:10px;position:sticky;top:0;z-index:2;border-bottom:1px solid var(--border)}
+.pf-tab{flex:1;padding:10px 0;font-size:14px;font-weight:600;color:var(--fg3);border-bottom:2px solid transparent;text-align:center}
+.pf-tab.active{color:var(--accent);border-color:var(--accent)}
+.pf-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;background:var(--surface)}
+.pf-tile{position:relative;aspect-ratio:1;background:var(--hover);overflow:hidden;cursor:pointer;max-width:100%}
+.pf-tile img{width:100%;height:100%;object-fit:cover}
+.pf-tile .dur{position:absolute;left:4px;bottom:4px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;border-radius:8px;padding:1px 6px}
+.pf-list{background:var(--surface)}
+.pf-li{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;min-width:0}
+.pf-li .ico{width:40px;height:40px;border-radius:8px;background:var(--hover);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.pf-li .tx{flex:1;min-width:0}
+.pf-li .t1{font-size:14px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pf-li .t2{font-size:12px;color:var(--fg3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pf-li a{color:var(--accent)}
+.pf-empty{padding:32px 16px;text-align:center;color:var(--fg3);font-size:13px;background:var(--surface)}
 #del-modal h3{font-size:16px;font-weight:600}
 #del-modal p{color:var(--fg2);font-size:14px;line-height:1.5}
 .del-actions{display:flex;flex-direction:column;gap:8px}
@@ -485,10 +531,21 @@ a{color:var(--accent);text-decoration:none}
           <div id="chat-name">—</div>
           <div id="chat-status">offline</div>
         </div>
-        <button class="icon-btn" id="btn-load-more-header" title="Muat mesej lama">
-          <svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 1 0 0 18A9 9 0 0 0 13 3zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+        <button class="icon-btn" id="btn-chat-menu" title="Menu">
+          <svg viewBox="0 0 24 24"><path d="M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>
         </button>
       </div>
+
+      <!-- Carian dalam chat -->
+      <div id="chat-search-bar" hidden>
+        <input id="chat-search-inp" type="search" placeholder="Cari dalam chat..." enterkeyhint="search"/>
+        <span id="chat-search-count"></span>
+        <button class="icon-btn" id="btn-chat-search-close" title="Tutup">
+          <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+      <div id="chat-search-results" hidden></div>
+      <button id="jump-latest" hidden>⬇ Mesej terkini</button>
 
       <!-- Typing indicator -->
       <div id="typing-indicator"></div>
@@ -575,6 +632,35 @@ a{color:var(--accent);text-decoration:none}
       <button class="btn-del-me" id="btn-del-me">Padam untuk Saya Sahaja</button>
       <button class="btn-cancel" id="btn-del-cancel">Batal</button>
     </div>
+  </div>
+</div>
+
+<!-- Profil -->
+<div id="profile-view" hidden>
+  <div class="pf-head">
+    <button class="icon-btn" id="btn-pf-back" title="Kembali">
+      <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+    </button>
+    <span class="pf-title">Info</span>
+  </div>
+  <div class="pf-scroll" id="pf-scroll">
+    <div class="pf-hero">
+      <div class="pf-avatar" id="pf-avatar">?</div>
+      <div class="pf-name" id="pf-name"></div>
+      <div class="pf-status" id="pf-status"></div>
+      <div class="pf-actions">
+        <button id="pf-btn-msg"><span>💬</span>Mesej</button>
+        <button id="pf-btn-mute"><span>🔔</span>Senyap</button>
+        <button id="pf-btn-search"><span>🔍</span>Cari</button>
+      </div>
+    </div>
+    <div class="pf-card" id="pf-info"></div>
+    <div class="pf-tabs">
+      <button class="pf-tab active" data-tab="media">Media</button>
+      <button class="pf-tab" data-tab="files">Fail</button>
+      <button class="pf-tab" data-tab="links">Pautan</button>
+    </div>
+    <div id="pf-content"></div>
   </div>
 </div>
 
@@ -1268,6 +1354,9 @@ async function openChat(cid){
   el("typing-indicator").textContent = "";
   LM_BTN.hidden = true;
   oldestMsgId = null;
+  viewingOld = false;
+  el("jump-latest").hidden = true;
+  closeChatSearch();
   renderDialogs();
 
   // 1) Papar cache / memori terus
@@ -1692,7 +1781,9 @@ async function onNewMessage(ev){
     renderDialogs();
     cacheSet("dialogs", dialogs);
   }
-  if(cid===activeChatId){
+  if(cid===activeChatId && viewingOld){
+    el("jump-latest").textContent = "⬇ Mesej baru";
+  } else if(cid===activeChatId){
     if(!rawMsgs[cid]) rawMsgs[cid] = new Map();
     rawMsgs[cid].set(String(m.id), m);
     const arr = chatMsgs[cid] || (chatMsgs[cid] = []);
@@ -1828,10 +1919,337 @@ async function loadOlder(){
   finally{ loadingOlder = false; LM_BTN.textContent = "⬆ Muat mesej lama"; }
 }
 LM_BTN.onclick = loadOlder;
-el("btn-load-more-header").onclick = loadOlder;
 el("msgs-wrap").addEventListener("scroll", ()=>{
   if(el("msgs-wrap").scrollTop < 60 && !LM_BTN.hidden) loadOlder();
 });
+
+// ══════════════════════════════════════════════════════════════════
+// MENU TITIK TIGA
+// ══════════════════════════════════════════════════════════════════
+function showMenu(items, x, y){
+  const menu = el("ctx-menu");
+  menu.innerHTML = items.map((it,i)=> it.sep ? `<div class="ctx-sep"></div>`
+    : `<div class="ctx-item${it.danger?" danger":""}" data-i="${i}"><span>${it.icon}</span><span>${escHtml(it.label)}</span></div>`).join("");
+  menu.querySelectorAll(".ctx-item").forEach(n=>{
+    n.onclick = (e)=>{ e.stopPropagation(); hideCtx(); items[Number(n.dataset.i)].action(); };
+  });
+  menu.hidden = false;
+  const w = menu.offsetWidth || 200, h = menu.offsetHeight || items.length*44;
+  menu.style.left = Math.max(8, Math.min(x, window.innerWidth-w-8))+"px";
+  menu.style.top = Math.max(8, Math.min(y, window.innerHeight-h-8))+"px";
+}
+function isMuted(cid){ const d = dialogs.find(x=>x.cid===cid); return !!(d && d.muted); }
+el("btn-chat-menu").onclick = (e)=>{
+  e.stopPropagation();
+  if(!activeChatId) return;
+  const r = e.currentTarget.getBoundingClientRect();
+  showMenu([
+    { icon:"🔍", label:"Cari dalam chat", action: openChatSearch },
+    { icon:"👤", label:"Lihat profil", action: openProfile },
+    { icon: isMuted(activeChatId)?"🔔":"🔕", label: isMuted(activeChatId)?"Nyahsenyap":"Senyapkan", action: ()=> toggleMute(activeChatId) },
+    { icon:"⬆", label:"Muat mesej lama", action: loadOlder },
+  ], r.right-210, r.bottom+4);
+};
+async function toggleMute(cid){
+  if(!tgReady) return;
+  const d = dialogs.find(x=>x.cid===cid);
+  const mute = !(d && d.muted);
+  try{
+    await client.invoke(new Api.account.UpdateNotifySettings({
+      peer: entities.get(cid),
+      settings: new Api.InputPeerNotifySettings({ muteUntil: mute ? 2147483647 : 0 }),
+    }));
+    if(d){ d.muted = mute; renderDialogs(); cacheSet("dialogs", dialogs); }
+    toast(mute ? "Chat disenyapkan 🔕" : "Notifikasi dihidupkan 🔔");
+    if(!el("profile-view").hidden) el("pf-btn-mute").innerHTML = mute ? "<span>🔔</span>Nyahsenyap" : "<span>🔕</span>Senyap";
+  }catch(e){ toast("Gagal: "+(e.message||e)); }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// CARI DALAM CHAT
+// ══════════════════════════════════════════════════════════════════
+let viewingOld = false;
+let searchTimer = null, searchSeq = 0;
+function openChatSearch(){
+  el("chat-search-bar").hidden = false;
+  el("chat-search-inp").value = "";
+  el("chat-search-count").textContent = "";
+  el("chat-search-results").hidden = true;
+  setTimeout(()=> el("chat-search-inp").focus(), 50);
+}
+function closeChatSearch(){
+  el("chat-search-bar").hidden = true;
+  el("chat-search-results").hidden = true;
+  el("chat-search-results").innerHTML = "";
+}
+el("btn-chat-search-close").onclick = closeChatSearch;
+el("chat-search-inp").addEventListener("input", ()=>{
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(runChatSearch, 450);
+});
+el("chat-search-inp").addEventListener("keydown", e=>{ if(e.key==="Enter"){ clearTimeout(searchTimer); runChatSearch(); }});
+function hilite(text, q){
+  const t = escHtml(text);
+  const qq = escHtml(q).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return qq ? t.replace(new RegExp(qq, "gi"), m=>`<mark>${m}</mark>`) : t;
+}
+async function runChatSearch(){
+  const q = el("chat-search-inp").value.trim();
+  const box = el("chat-search-results");
+  if(!q){ box.hidden = true; el("chat-search-count").textContent = ""; return; }
+  if(!tgReady){ toast("Belum bersambung ke Telegram"); return; }
+  const cid = activeChatId, seq = ++searchSeq;
+  el("chat-search-count").textContent = "...";
+  try{
+    const res = await client.getMessages(entities.get(cid), { search: q, limit: 50 });
+    if(seq!==searchSeq || cid!==activeChatId) return;
+    el("chat-search-count").textContent = res.length ? (res.length>=50?"50+":res.length) : "0";
+    if(!res.length){ box.innerHTML = `<div class="pf-empty">Tiada mesej ditemui</div>`; box.hidden = false; return; }
+    box.innerHTML = res.map(m=>{
+      let who = m.out ? "Anda" : "";
+      try{ if(!who) who = m.sender ? entName(m.sender) : (activeChatData?.name||""); }catch(e){}
+      const txt = m.message || msgPreview(m);
+      const i = txt.toLowerCase().indexOf(q.toLowerCase());
+      const snip = i > 30 ? "…"+txt.slice(i-25) : txt;
+      return `<div class="sr-item" data-id="${m.id}">
+        <div class="sr-top"><b>${escHtml(who)}</b><span>${fmtDate(m.date*1000)} ${fmtTime(m.date*1000)}</span></div>
+        <div class="sr-text">${hilite(snip, q)}</div>
+      </div>`;
+    }).join("");
+    box.hidden = false;
+    box.querySelectorAll(".sr-item").forEach(n=>{
+      n.onclick = ()=>{ box.hidden = true; jumpToMessage(Number(n.dataset.id)); };
+    });
+  }catch(e){
+    el("chat-search-count").textContent = "";
+    toast("Gagal cari: "+(e.message||e));
+  }
+}
+async function jumpToMessage(id){
+  const cid = activeChatId;
+  if((chatMsgs[cid]||[]).some(x=>x.id===String(id))){ scrollToMsg(String(id)); return; }
+  toast("Mencari mesej...");
+  try{
+    const res = await client.getMessages(entities.get(cid), { offsetId: id, addOffset: -25, limit: 50 });
+    if(cid!==activeChatId) return;
+    if(!rawMsgs[cid]) rawMsgs[cid] = new Map();
+    const arr = res.slice().sort((a,b)=>a.id-b.id).map(m=>{ rawMsgs[cid].set(String(m.id), m); return toMsg(m, cid); });
+    chatMsgs[cid] = arr;
+    oldestMsgId = arr.length ? Number(arr[0].id) : null;
+    viewingOld = true;
+    el("jump-latest").textContent = "⬇ Mesej terkini";
+    el("jump-latest").hidden = false;
+    fillReplies(cid);
+    renderMessages(cid, arr);
+    fetchMissingReplies(cid);
+    setTimeout(()=> scrollToMsg(String(id)), 60);
+  }catch(e){ toast("Gagal: "+(e.message||e)); }
+}
+el("jump-latest").onclick = ()=>{
+  viewingOld = false;
+  el("jump-latest").hidden = true;
+  delete chatMsgs[activeChatId];
+  openChat(activeChatId);
+};
+
+// ══════════════════════════════════════════════════════════════════
+// PROFIL (DP, INFO, MEDIA, FAIL, PAUTAN)
+// ══════════════════════════════════════════════════════════════════
+el("chat-avatar").onclick = ()=> openProfile();
+el("chat-info").onclick = ()=> openProfile();
+const pfCache = {};   // cid -> { media:[], files:[], links:[] }
+let pfTab = "media", pfBigUrl = null;
+
+async function openProfile(){
+  const cid = activeChatId;
+  if(!cid) return;
+  const d = activeChatData || {};
+  const e = entities.get(cid);
+  el("profile-view").hidden = false;
+  try{ history.pushState({profile:cid}, ""); }catch(err){}
+  el("pf-scroll").scrollTop = 0;
+  el("pf-name").textContent = d.name || "?";
+  const st = el("chat-status");
+  el("pf-status").textContent = st.textContent;
+  el("pf-status").className = "pf-status"+(st.className==="online"?" online":"");
+  const av = el("pf-avatar");
+  av.style.background = nameColor(d.name);
+  av.innerHTML = avatarCache.get(cid) ? `<img src="${avatarCache.get(cid)}" alt=""/>` : escHtml(avatarInitial(d.name||"?"));
+  pfBigUrl = null;
+  el("pf-btn-mute").innerHTML = isMuted(cid) ? "<span>🔔</span>Nyahsenyap" : "<span>🔕</span>Senyap";
+
+  // Info asas dulu
+  const rows = [];
+  if(e && e.className==="User"){
+    if(e.phone) rows.push({ v:"+"+e.phone, k:"Telefon", copy:true });
+    if(e.username) rows.push({ v:"@"+e.username, k:"Username", copy:true });
+  } else if(e && e.username){
+    rows.push({ v:"t.me/"+e.username, k:"Pautan", copy:true });
+  }
+  renderPfInfo(rows);
+  setPfTab("media");
+  if(!tgReady || !e) return;
+
+  // Gambar profil besar
+  if(d.hasPhoto){
+    client.downloadProfilePhoto(e, { isBig:true }).then(buf=>{
+      if(!buf || !buf.length || activeChatId!==cid) return;
+      pfBigUrl = URL.createObjectURL(new Blob([buf], { type:"image/jpeg" }));
+      av.innerHTML = `<img src="${pfBigUrl}" alt=""/>`;
+    }).catch(()=>{});
+  }
+  // Bio / penerangan
+  try{
+    let about = "";
+    if(e.className==="User"){
+      const full = await client.invoke(new Api.users.GetFullUser({ id: e }));
+      about = full.fullUser && full.fullUser.about || "";
+    } else if(e.className==="Channel"){
+      const full = await client.invoke(new Api.channels.GetFullChannel({ channel: e }));
+      about = full.fullChat && full.fullChat.about || "";
+    } else if(e.className==="Chat"){
+      const full = await client.invoke(new Api.messages.GetFullChat({ chatId: e.id }));
+      about = full.fullChat && full.fullChat.about || "";
+    }
+    if(about && activeChatId===cid){
+      rows.splice(1, 0, { v: about, k: e.className==="User" ? "Bio" : "Penerangan" });
+      renderPfInfo(rows);
+    }
+  }catch(err){ /* bio tidak wajib */ }
+}
+function renderPfInfo(rows){
+  const box = el("pf-info");
+  box.hidden = !rows.length;
+  box.innerHTML = rows.map((r,i)=>`<div class="pf-row" data-i="${i}"><div class="v">${linkify(escHtml(r.v))}</div><div class="k">${escHtml(r.k)}</div></div>`).join("");
+  box.querySelectorAll(".pf-row").forEach(n=>{
+    const r = rows[Number(n.dataset.i)];
+    if(r.copy) n.onclick = ()=> navigator.clipboard.writeText(r.v).then(()=>toast("Disalin")).catch(()=>{});
+  });
+}
+function closeProfile(){
+  el("profile-view").hidden = true;
+}
+function backFromProfile(then){
+  if(history.state && history.state.profile){ history.back(); }
+  else closeProfile();
+  if(then) setTimeout(then, 120);
+}
+el("btn-pf-back").onclick = ()=> backFromProfile();
+el("pf-btn-msg").onclick = ()=> backFromProfile();
+el("pf-btn-mute").onclick = ()=> toggleMute(activeChatId);
+el("pf-btn-search").onclick = ()=> backFromProfile(openChatSearch);
+el("pf-avatar").onclick = ()=>{
+  const u = pfBigUrl || avatarCache.get(activeChatId);
+  if(u) openMediaViewer(u, "image");
+};
+document.querySelectorAll(".pf-tab").forEach(t=>{
+  t.onclick = ()=> setPfTab(t.dataset.tab);
+});
+
+const PF_FILTER = {
+  media: ()=> new Api.InputMessagesFilterPhotoVideo(),
+  files: ()=> new Api.InputMessagesFilterDocument(),
+  links: ()=> new Api.InputMessagesFilterUrl(),
+};
+async function setPfTab(tab){
+  pfTab = tab;
+  document.querySelectorAll(".pf-tab").forEach(t=> t.classList.toggle("active", t.dataset.tab===tab));
+  const box = el("pf-content");
+  const cid = activeChatId;
+  const cache = pfCache[cid] || (pfCache[cid] = {});
+  if(cache[tab]){ renderPfTab(tab, cache[tab]); return; }
+  if(!tgReady){ box.innerHTML = `<div class="pf-empty">Belum bersambung ke Telegram</div>`; return; }
+  box.innerHTML = `<div class="pf-empty">Memuatkan...</div>`;
+  try{
+    const res = await client.getMessages(entities.get(cid), { filter: PF_FILTER[tab](), limit: 90 });
+    if(!rawMsgs[cid]) rawMsgs[cid] = new Map();
+    res.forEach(m=> rawMsgs[cid].set(String(m.id), m));
+    cache[tab] = res;
+    if(pfTab===tab && activeChatId===cid) renderPfTab(tab, res);
+  }catch(e){
+    if(pfTab===tab) box.innerHTML = `<div class="pf-empty">Gagal: ${escHtml(e.message||e)}</div>`;
+  }
+}
+function extractLinks(m){
+  const out = [];
+  const text = m.message || "";
+  (m.entities||[]).forEach(en=>{
+    if(en.className==="MessageEntityTextUrl" && en.url) out.push(en.url);
+    else if(en.className==="MessageEntityUrl") out.push(text.substr(en.offset, en.length));
+  });
+  const wp = m.media && m.media.webpage;
+  if(wp && wp.url && !out.includes(wp.url)) out.push(wp.url);
+  if(!out.length){ (text.match(/https?:\/\/[^\s<>"]+/g)||[]).forEach(u=>out.push(u)); }
+  return { urls: [...new Set(out)], title: wp && wp.title, site: wp && wp.siteName };
+}
+function renderPfTab(tab, list){
+  const box = el("pf-content");
+  const cid = activeChatId;
+  const label = { media:"media", files:"fail", links:"pautan" }[tab];
+  if(!list.length){ box.innerHTML = `<div class="pf-empty">Tiada ${label} dalam chat ini</div>`; return; }
+
+  if(tab==="media"){
+    box.innerHTML = `<div class="pf-grid">${list.map(m=>{
+      const info = detectMedia(m);
+      const key = cid+":"+m.id;
+      const src = mediaCache.get(key);
+      const dur = (info.type==="video"||info.type==="gif"||info.type==="round") ? `<span class="dur">▶ ${fmtDur(info.duration)}</span>` : "";
+      return `<div class="pf-tile" data-id="${m.id}" data-kind="${info.type||"photo"}">${src?`<img src="${src}" alt=""/>`:""}${dur}</div>`;
+    }).join("")}</div>`;
+    box.querySelectorAll(".pf-tile").forEach(t=>{
+      const id = t.dataset.id;
+      t.onclick = ()=>{
+        const msg = toMsg(rawMsgs[cid].get(id), cid);
+        mediaAction(msg, t.dataset.kind==="photo" ? "view-photo" : "view-video");
+      };
+      if(!t.querySelector("img")){
+        queueDownload(()=> downloadPreview(cid, id, t.dataset.kind==="photo"?"photo":"video")).then(url=>{
+          if(url && t.isConnected) t.insertAdjacentHTML("afterbegin", `<img src="${url}" alt=""/>`);
+        }).catch(()=>{});
+      }
+    });
+    return;
+  }
+
+  if(tab==="files"){
+    box.innerHTML = `<div class="pf-list">${list.map(m=>{
+      const info = detectMedia(m);
+      const name = info.fileName || (info.type==="voice"?"Mesej suara":info.type==="audio"?"Audio":"Fail");
+      return `<div class="pf-li" data-id="${m.id}">
+        <div class="ico">${info.type==="voice"||info.type==="audio"?"🎵":fileIcon(name)}</div>
+        <div class="tx"><div class="t1">${escHtml(name)}</div><div class="t2">${fmtFileSize(info.fileSize)} · ${fmtDate(m.date*1000)}</div></div>
+      </div>`;
+    }).join("")}</div>`;
+    box.querySelectorAll(".pf-li").forEach(n=>{
+      n.onclick = ()=> mediaAction(toMsg(rawMsgs[cid].get(n.dataset.id), cid), "download");
+    });
+    return;
+  }
+
+  // links
+  box.innerHTML = `<div class="pf-list">${list.map(m=>{
+    const L = extractLinks(m);
+    if(!L.urls.length) return "";
+    const first = L.urls[0];
+    let host = "";
+    try{ host = new URL(/^https?:/i.test(first)?first:"https://"+first).hostname.replace(/^www\./,""); }catch(e){}
+    return `<div class="pf-li" data-id="${m.id}">
+      <div class="ico">${escHtml((host[0]||"🔗").toUpperCase())}</div>
+      <div class="tx">
+        <div class="t1">${escHtml(L.title || host || first)}</div>
+        ${L.urls.map(u=>`<div class="t2"><a href="${escHtml(/^https?:/i.test(u)?u:"https://"+u)}" target="_blank" rel="noopener">${escHtml(u)}</a></div>`).join("")}
+        <div class="t2">${fmtDate(m.date*1000)}</div>
+      </div>
+    </div>`;
+  }).join("")}</div>`;
+  box.querySelectorAll(".pf-li").forEach(n=>{
+    n.onclick = (e)=>{
+      if(e.target.closest("a")) return;
+      const id = Number(n.dataset.id);
+      backFromProfile(()=> jumpToMessage(id));
+    };
+  });
+}
 
 // ══════════════════════════════════════════════════════════════════
 // HANTAR MESEJ
@@ -2256,8 +2674,11 @@ el("back-btn").onclick = (e)=>{
 };
 window.addEventListener("popstate", ()=>{
   if(!el("media-viewer").hidden){ el("btn-close-media").onclick(); return; }
+  if(!el("profile-view").hidden){ closeProfile(); return; }
+  if(!el("chat-search-bar").hidden){ closeChatSearch(); return; }
   if(activeChatId) closeChat();
 });
+
 
 // ── SYNC ─────────────────────────────────────────────────────────
 el("btn-sync").onclick = async ()=>{
