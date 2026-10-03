@@ -308,7 +308,13 @@ div#ctx-menu{background:transparent;border:none;box-shadow:none;border-radius:0;
 .ctx-more svg{width:24px;height:24px;fill:currentColor}
 .ctx-react.expanded{display:grid;grid-template-columns:repeat(7,1fr);width:100%;max-height:300px;overflow-y:auto;border-radius:22px;padding:8px}
 .ctx-react.expanded .ctx-more,.ctx-react.expanded+.ctx-list{display:none}
-.ctx-list{background:var(--bar-solid);border-radius:18px;box-shadow:var(--bar-shadow);padding:6px 0;overflow:hidden;width:min(260px,100%)}
+:root{--menu-bg:#ffffff}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--menu-bg:#273446}}
+:root[data-theme="dark"]{--menu-bg:#273446}
+.ctx-list{background:var(--menu-bg);border-radius:18px;box-shadow:0 6px 24px rgba(0,0,0,.35);padding:6px 0;overflow:hidden;width:min(260px,100%)}
+.ctx-list.top-menu{width:auto;min-width:230px;max-width:calc(100vw - 16px);transform-origin:top right;animation:menuIn .16s ease-out}
+@keyframes menuIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+#ctx-menu .ctx-item .ctx-emoji{width:24px;text-align:center;font-size:19px;flex-shrink:0}
 #ctx-menu .ctx-item{padding:13px 18px;gap:22px;font-size:16px;color:var(--fg)}
 #ctx-menu .ctx-item svg{width:24px;height:24px;fill:none;stroke:var(--fg);flex-shrink:0}
 #ctx-menu .ctx-item.danger{color:var(--danger)}
@@ -2315,6 +2321,10 @@ const TG_LINE = {
   fwd:'<polyline points="15 17 20 12 15 7"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/>',
   pin:'<path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>',
   unpin:'<path d="M12 17v5"/><path d="M15 9.34V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H7.89"/><path d="M9 9v1.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h11"/><line x1="2" y1="2" x2="22" y2="22"/>',
+  search:'<circle cx="11" cy="11" r="7.5"/><path d="m21 21-4.6-4.6"/>',
+  wallpaper:'<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>',
+  reset:'<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
+  older:'<path d="M12 19V5"/><path d="m5 12 7-7 7 7"/>',
   select:'<circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/>',
   del:'<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>'
 };
@@ -2773,30 +2783,39 @@ el("msgs-wrap").addEventListener("scroll", ()=>{
 // ══════════════════════════════════════════════════════════════════
 // MENU TITIK TIGA
 // ══════════════════════════════════════════════════════════════════
-function showMenu(items, x, y){
+// anchor = kotak butang: menu terbuka menutup butang tu (macam Telegram)
+function showMenu(items, x, y, anchor){
   const menu = el("ctx-menu");
-  menu.innerHTML = items.map((it,i)=> it.sep ? `<div class="ctx-sep"></div>`
-    : `<div class="ctx-item${it.danger?" danger":""}" data-i="${i}"><span>${it.icon}</span><span>${escHtml(it.label)}</span></div>`).join("");
+  el("reaction-picker").hidden = true;
+  const ic = it=> (typeof TG_LINE!=="undefined" && TG_LINE[it.icon]) ? tgSvg(it.icon) : `<span class="ctx-emoji">${it.icon||""}</span>`;
+  menu.innerHTML = `<div class="ctx-list top-menu">${items.map((it,i)=> it.sep ? `<div class="ctx-sep"></div>`
+    : `<div class="ctx-item${it.danger?" danger":""}" data-i="${i}">${ic(it)}<span>${escHtml(it.label)}</span></div>`).join("")}</div>`;
   menu.querySelectorAll(".ctx-item").forEach(n=>{
     n.onclick = (e)=>{ e.stopPropagation(); hideCtx(); items[Number(n.dataset.i)].action(); };
   });
+  menu.style.alignItems = "flex-end";
   menu.hidden = false;
-  const w = menu.offsetWidth || 200, h = menu.offsetHeight || items.length*44;
-  menu.style.left = Math.max(8, Math.min(x, window.innerWidth-w-8))+"px";
-  menu.style.top = Math.max(8, Math.min(y, window.innerHeight-h-8))+"px";
+  const box = menu.firstElementChild;
+  const w = box.offsetWidth || 230, h = box.offsetHeight || items.length*50;
+  menu.style.width = w+"px";
+  let left = anchor ? anchor.right - w : x;
+  let top = anchor ? anchor.top : y;
+  menu.style.left = Math.max(8, Math.min(left, window.innerWidth-w-8))+"px";
+  menu.style.top = Math.max(8, Math.min(top, window.innerHeight-h-8))+"px";
 }
 function isMuted(cid){ const d = dialogs.find(x=>x.cid===cid); return !!(d && d.muted); }
 el("btn-chat-menu").onclick = (e)=>{
   e.stopPropagation();
   if(!activeChatId) return;
   const r = e.currentTarget.getBoundingClientRect();
+  if(!el("ctx-menu").hidden){ hideCtx(); return; }
   const items = [
-    { icon:"🔍", label:"Cari dalam chat", action: openChatSearch },
-    { icon:"🖼", label:"Tukar latar", action: ()=> pickWallpaper(activeChatId) },
+    { icon:"search", label:"Cari dalam chat", action: openChatSearch },
+    { icon:"wallpaper", label:"Tukar latar", action: ()=> pickWallpaper(activeChatId) },
   ];
-  if(wallpapers[activeChatId]) items.push({ icon:"↩", label:"Guna latar asal", action: ()=> resetWallpaper(activeChatId) });
-  items.push({ icon:"⬆", label:"Muat mesej lama", action: loadOlder });
-  showMenu(items, r.right-210, r.bottom+4);
+  if(wallpapers[activeChatId]) items.push({ icon:"reset", label:"Guna latar asal", action: ()=> resetWallpaper(activeChatId) });
+  items.push({ icon:"older", label:"Muat mesej lama", action: loadOlder });
+  showMenu(items, r.right-230, r.top, r);
 };
 async function toggleMute(cid){
   if(!tgReady) return;
@@ -3665,6 +3684,21 @@ document.addEventListener("click", e=>{
   if(!el("ctx-menu").hidden && !el("ctx-menu").contains(e.target)) hideCtx();
   if(!el("reaction-picker").hidden && !el("reaction-picker").contains(e.target)) el("reaction-picker").hidden = true;
 });
+// Tekan mana-mana tempat di luar popup → popup tutup (sentuhan itu tak buat apa-apa lagi, macam Telegram)
+function closePopups(){
+  el("ctx-menu").hidden = true;
+  el("reaction-picker").hidden = true;
+}
+var popSwallowUntil = 0;
+document.addEventListener("pointerdown", e=>{
+  const open = [el("ctx-menu"), el("reaction-picker")].filter(p=> !p.hidden);
+  if(!open.length || open.some(p=> p.contains(e.target))) return;
+  closePopups();
+  popSwallowUntil = Date.now() + 600;
+}, true);
+document.addEventListener("click", e=>{
+  if(Date.now() < popSwallowUntil){ popSwallowUntil = 0; e.preventDefault(); e.stopPropagation(); }
+}, true);
 
 // ══════════════════════════════════════════════════════════════════
 // BALAS
@@ -4017,6 +4051,7 @@ el("btn-close-media").onclick = ()=>{
 // ══════════════════════════════════════════════════════════════════
 function closeChat(){
   if(selMode) exitSelect(true);
+  closePopups();
   activeChatId = null;
   applyWallpaper();
   closePanel(false);
