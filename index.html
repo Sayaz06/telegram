@@ -289,6 +289,8 @@ a{color:var(--accent);text-decoration:none}
 .pf-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;background:var(--surface)}
 .pf-tile{position:relative;aspect-ratio:1;background:var(--hover);overflow:hidden;cursor:pointer;max-width:100%}
 .pf-tile img{width:100%;height:100%;object-fit:cover}
+.pf-tile,.media-ph.strip{background-size:cover;background-position:center}
+.media-ph.strip{color:transparent;animation:none}
 .pf-tile .dur{position:absolute;left:4px;bottom:4px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;border-radius:8px;padding:1px 6px}
 .pf-list{background:var(--surface)}
 .pf-li{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;min-width:0}
@@ -1552,7 +1554,8 @@ function buildBubbleContent(msg){
       if(t==="gif") inner = `<video src="${src}" autoplay loop muted playsinline></video>`;
       else inner = `<img src="${src}" alt=""/>`;
     } else {
-      inner = `<div class="media-ph" data-key="${escHtml(key)}" data-kind="${t}">${t==="sticker"?"🖼":t==="photo"?"📷":"🎬"}</div>`;
+      const strip = strippedUrl(rawMsgs[activeChatId]?.get(msg.id), key);
+      inner = `<div class="media-ph${strip?" strip":""}" data-key="${escHtml(key)}" data-kind="${t}"${strip?` style="background-image:url('${strip}')"`:""}>${t==="sticker"?"🖼":t==="photo"?"📷":"🎬"}</div>`;
     }
     const play = (t==="video"||t==="round") ? `<div class="play-ov">▶${md.duration?" "+fmtDur(md.duration):""}</div>` : "";
     const cls = t==="sticker" ? "bubble-media sticker" : t==="round" ? "bubble-media round" : "bubble-media";
@@ -1633,28 +1636,53 @@ function queueDownload(fn){
   });
 }
 function pumpQueue(){
-  while(dlRunning < 3 && dlQueue.length){
+  while(dlRunning < 4 && dlQueue.length){
     const j = dlQueue.shift();
     dlRunning++;
     j.fn().then(j.res, j.rej).finally(()=>{ dlRunning--; pumpQueue(); });
   }
 }
-function bestPhotoThumb(m){
+function bestPhotoThumb(m, small){
   const sizes = m.media?.photo?.sizes || [];
-  const i = sizes.findIndex(s=>s.type==="x");
-  if(i>=0) return i;
-  const j = sizes.findIndex(s=>s.type==="m");
-  return j>=0 ? j : undefined;
+  const order = small ? ["m","s","x"] : ["x","m"];
+  for(const t of order){
+    const i = sizes.findIndex(s=>s.type===t);
+    if(i>=0) return i;
+  }
+  return undefined;
 }
-async function downloadPreview(cid, id, kind){
-  const key = cid+":"+id;
+// Pratonton kabur serta-merta (dibawa bersama mesej, tanpa muat turun) — sama macam Telegram asal
+const strippedCache = new Map();
+function strippedUrl(m, key){
+  if(!m) return null;
+  if(strippedCache.has(key)) return strippedCache.get(key);
+  let url = null;
+  try{
+    const sizes = m.media?.photo?.sizes || m.media?.document?.thumbs || [];
+    const s = sizes.find(x=>x.className==="PhotoStrippedSize");
+    if(s && G.utils.strippedPhotoToJpg){
+      url = URL.createObjectURL(new Blob([G.utils.strippedPhotoToJpg(s.bytes)], { type:"image/jpeg" }));
+    }
+  }catch(e){}
+  strippedCache.set(key, url);
+  return url;
+}
+async function downloadPreview(cid, id, kind, small){
+  const key = cid+":"+id+(small?":g":"");
   if(mediaCache.has(key)) return mediaCache.get(key);
+  // Simpanan dalam phone (IndexedDB) — buka kali kedua terus keluar
+  const saved = await cacheGet("th:"+key);
+  if(saved instanceof Blob){
+    const u = URL.createObjectURL(saved);
+    mediaCache.set(key, u);
+    return u;
+  }
   const m = rawMsgs[cid]?.get(id);
   if(!m) return null;
   const info = detectMedia(m);
   let buf, mime = "image/jpeg";
   if(kind==="photo" && !info.isDocPhoto){
-    buf = await client.downloadMedia(m, { thumb: bestPhotoThumb(m) });
+    buf = await client.downloadMedia(m, { thumb: bestPhotoThumb(m, small) });
   } else if(kind==="sticker" && !info.animated){
     buf = await client.downloadMedia(m, {}); mime = info.mime || "image/webp";
   } else if(kind==="gif" && info.fileSize < 3*1024*1024){
@@ -1666,8 +1694,10 @@ async function downloadPreview(cid, id, kind){
     buf = await client.downloadMedia(m, { thumb: n-1 });
   }
   if(!buf || !buf.length) return null;
-  const url = URL.createObjectURL(new Blob([buf], { type: mime }));
+  const blob = new Blob([buf], { type: mime });
+  const url = URL.createObjectURL(blob);
   mediaCache.set(key, url);
+  if(blob.size < 400*1024) cacheSet("th:"+key, blob);
   return url;
 }
 
@@ -1781,6 +1811,7 @@ async function onNewMessage(ev){
     renderDialogs();
     cacheSet("dialogs", dialogs);
   }
+  if(searchPool[cid] && searchPool[cid].map) searchPool[cid].map.set(String(m.id), m);
   if(cid===activeChatId && viewingOld){
     el("jump-latest").textContent = "⬇ Mesej baru";
   } else if(cid===activeChatId){
@@ -1945,8 +1976,6 @@ el("btn-chat-menu").onclick = (e)=>{
   const r = e.currentTarget.getBoundingClientRect();
   showMenu([
     { icon:"🔍", label:"Cari dalam chat", action: openChatSearch },
-    { icon:"👤", label:"Lihat profil", action: openProfile },
-    { icon: isMuted(activeChatId)?"🔔":"🔕", label: isMuted(activeChatId)?"Nyahsenyap":"Senyapkan", action: ()=> toggleMute(activeChatId) },
     { icon:"⬆", label:"Muat mesej lama", action: loadOlder },
   ], r.right-210, r.bottom+4);
 };
@@ -1993,17 +2022,46 @@ function hilite(text, q){
   const qq = escHtml(q).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return qq ? t.replace(new RegExp(qq, "gi"), m=>`<mark>${m}</mark>`) : t;
 }
+// Simpanan mesej terkini untuk carian separa perkataan (contoh "sense" jumpa "sensetive")
+const searchPool = {};   // cid -> { map: Map(id->Message), promise }
+function ensureSearchPool(cid){
+  if(searchPool[cid]) return searchPool[cid].promise;
+  const pool = searchPool[cid] = { map: new Map(), promise: null };
+  pool.promise = client.getMessages(entities.get(cid), { limit: 800 }).then(res=>{
+    res.forEach(m=> pool.map.set(String(m.id), m));
+  }).catch(e=>{ delete searchPool[cid]; throw e; });
+  return pool.promise;
+}
 async function runChatSearch(){
   const q = el("chat-search-inp").value.trim();
   const box = el("chat-search-results");
   if(!q){ box.hidden = true; el("chat-search-count").textContent = ""; return; }
   if(!tgReady){ toast("Belum bersambung ke Telegram"); return; }
   const cid = activeChatId, seq = ++searchSeq;
+  const ql = q.toLowerCase();
+  const found = new Map();
+  const scan = (map)=>{ if(map) map.forEach(m=>{ if((m.message||"").toLowerCase().includes(ql)) found.set(String(m.id), m); }); };
+  // 1) Terus cari dalam mesej yang dah ada dalam phone
+  scan(rawMsgs[cid]);
+  scan(searchPool[cid] && searchPool[cid].map);
+  showSearchResults(found, q, cid, true);
+  // 2) Carian pelayan Telegram + muat 800 mesej terkini untuk carian separa
   el("chat-search-count").textContent = "...";
-  try{
-    const res = await client.getMessages(entities.get(cid), { search: q, limit: 50 });
-    if(seq!==searchSeq || cid!==activeChatId) return;
-    el("chat-search-count").textContent = res.length ? (res.length>=50?"50+":res.length) : "0";
+  const [srv] = await Promise.allSettled([
+    client.getMessages(entities.get(cid), { search: q, limit: 50 }),
+    ensureSearchPool(cid),
+  ]);
+  if(seq!==searchSeq || cid!==activeChatId) return;
+  if(srv.status==="fulfilled") srv.value.forEach(m=> found.set(String(m.id), m));
+  scan(searchPool[cid] && searchPool[cid].map);
+  showSearchResults(found, q, cid, false);
+}
+function showSearchResults(found, q, cid, partial){
+  const box = el("chat-search-results");
+  const res = [...found.values()].sort((a,b)=>b.id-a.id).slice(0,100);
+  if(!res.length && partial){ box.innerHTML = `<div class="pf-empty">Mencari...</div>`; box.hidden = false; el("chat-search-count").textContent = "..."; return; }
+  el("chat-search-count").textContent = partial ? "..." : (res.length>=100?"100+":String(res.length));
+  {
     if(!res.length){ box.innerHTML = `<div class="pf-empty">Tiada mesej ditemui</div>`; box.hidden = false; return; }
     box.innerHTML = res.map(m=>{
       let who = m.out ? "Anda" : "";
@@ -2020,9 +2078,6 @@ async function runChatSearch(){
     box.querySelectorAll(".sr-item").forEach(n=>{
       n.onclick = ()=>{ box.hidden = true; jumpToMessage(Number(n.dataset.id)); };
     });
-  }catch(e){
-    el("chat-search-count").textContent = "";
-    toast("Gagal cari: "+(e.message||e));
   }
 }
 async function jumpToMessage(id){
@@ -2089,6 +2144,9 @@ async function openProfile(){
   renderPfInfo(rows);
   setPfTab("media");
   if(!tgReady || !e) return;
+  // Muat ketiga-tiga tab serentak supaya tukar tab terus keluar
+  loadPfData(cid, "files").catch(()=>{});
+  loadPfData(cid, "links").catch(()=>{});
 
   // Gambar profil besar
   if(d.hasPhoto){
@@ -2161,14 +2219,23 @@ async function setPfTab(tab){
   if(!tgReady){ box.innerHTML = `<div class="pf-empty">Belum bersambung ke Telegram</div>`; return; }
   box.innerHTML = `<div class="pf-empty">Memuatkan...</div>`;
   try{
-    const res = await client.getMessages(entities.get(cid), { filter: PF_FILTER[tab](), limit: 90 });
-    if(!rawMsgs[cid]) rawMsgs[cid] = new Map();
-    res.forEach(m=> rawMsgs[cid].set(String(m.id), m));
-    cache[tab] = res;
+    const res = await loadPfData(cid, tab);
     if(pfTab===tab && activeChatId===cid) renderPfTab(tab, res);
   }catch(e){
     if(pfTab===tab) box.innerHTML = `<div class="pf-empty">Gagal: ${escHtml(e.message||e)}</div>`;
   }
+}
+function loadPfData(cid, tab){
+  const cache = pfCache[cid] || (pfCache[cid] = {});
+  if(cache[tab]) return Promise.resolve(cache[tab]);
+  if(cache[tab+"_p"]) return cache[tab+"_p"];
+  cache[tab+"_p"] = client.getMessages(entities.get(cid), { filter: PF_FILTER[tab](), limit: 60 }).then(res=>{
+    if(!rawMsgs[cid]) rawMsgs[cid] = new Map();
+    res.forEach(m=> rawMsgs[cid].set(String(m.id), m));
+    cache[tab] = res;
+    return res;
+  }).finally(()=>{ delete cache[tab+"_p"]; });
+  return cache[tab+"_p"];
 }
 function extractLinks(m){
   const out = [];
@@ -2192,9 +2259,10 @@ function renderPfTab(tab, list){
     box.innerHTML = `<div class="pf-grid">${list.map(m=>{
       const info = detectMedia(m);
       const key = cid+":"+m.id;
-      const src = mediaCache.get(key);
+      const src = mediaCache.get(key+":g") || mediaCache.get(key);
+      const strip = src ? null : strippedUrl(m, key);
       const dur = (info.type==="video"||info.type==="gif"||info.type==="round") ? `<span class="dur">▶ ${fmtDur(info.duration)}</span>` : "";
-      return `<div class="pf-tile" data-id="${m.id}" data-kind="${info.type||"photo"}">${src?`<img src="${src}" alt=""/>`:""}${dur}</div>`;
+      return `<div class="pf-tile" data-id="${m.id}" data-kind="${info.type||"photo"}"${strip?` style="background-image:url('${strip}')"`:""}>${src?`<img src="${src}" alt=""/>`:""}${dur}</div>`;
     }).join("")}</div>`;
     box.querySelectorAll(".pf-tile").forEach(t=>{
       const id = t.dataset.id;
@@ -2203,7 +2271,8 @@ function renderPfTab(tab, list){
         mediaAction(msg, t.dataset.kind==="photo" ? "view-photo" : "view-video");
       };
       if(!t.querySelector("img")){
-        queueDownload(()=> downloadPreview(cid, id, t.dataset.kind==="photo"?"photo":"video")).then(url=>{
+        queueDownload(()=> downloadPreview(cid, id, t.dataset.kind==="photo"?"photo":"video", true)).then(url=>{
+
           if(url && t.isConnected) t.insertAdjacentHTML("afterbegin", `<img src="${url}" alt=""/>`);
         }).catch(()=>{});
       }
