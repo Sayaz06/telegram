@@ -350,6 +350,23 @@ div#ctx-menu.msg-menu{gap:12px}
 .sel-big{flex:1;height:54px;border-radius:27px;background:var(--bar-bg);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-shadow:var(--bar-shadow);display:flex;align-items:center;justify-content:center;gap:10px;font-size:17px;font-weight:600;color:var(--fg);border:none}
 #chat-view.sel-mode #chat-header,#chat-view.sel-mode #input-row,#chat-view.sel-mode #reply-bar,#chat-view.sel-mode #emoji-picker,#chat-view.sel-mode #voice-overlay{display:none!important}
 .sel-check{display:none}
+/* ── Animasi masuk/keluar mod pilih (macam Telegram) ── */
+#chat-view #sel-actions{position:absolute;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:2}
+#chat-view #input-row{transition:transform .3s cubic-bezier(.2,.8,.2,1),opacity .22s ease}
+#chat-view.sel-mode #input-area #input-row{display:flex!important;transform:translateY(140%);opacity:0;pointer-events:none}
+#sel-actions:not([hidden]){animation:selDrop .32s cubic-bezier(.2,.8,.2,1)}
+#sel-bar:not([hidden]) #sel-close{animation:selSpin .32s ease}
+#sel-bar:not([hidden]) .sel-acts{overflow:hidden;animation:selGrow .34s cubic-bezier(.2,.8,.2,1)}
+#sel-bar:not([hidden]) .sel-acts button,#sel-bar:not([hidden]) #sel-count{animation:selFade .3s ease}
+#chat-view.sel-leave #back-btn{animation:selSpinBack .32s ease}
+#chat-view.sel-leave #btn-chat-menu{animation:selPop .3s ease}
+#chat-view.sel-leave #chat-head-pill{animation:selFade .3s ease}
+@keyframes selDrop{from{transform:translateY(-75%);opacity:0}to{transform:none;opacity:1}}
+@keyframes selSpin{from{transform:rotate(-180deg) scale(.7);opacity:.2}to{transform:none;opacity:1}}
+@keyframes selSpinBack{from{transform:rotate(180deg) scale(.7);opacity:.2}to{transform:none;opacity:1}}
+@keyframes selGrow{from{max-width:50px}to{max-width:220px}}
+@keyframes selFade{from{opacity:0}to{opacity:1}}
+@keyframes selPop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
 /* Mod pilih: saiz gelembung TAK berubah — mesej masuk cuma digeser ke kanan (macam Telegram), jadi chat tak melompat */
 #chat-view.sel-mode .msg-row{position:relative;isolation:isolate;cursor:pointer}
 #chat-view .msg-row.in>.msg-avatar-sm,#chat-view .msg-row.in>.msg-bubble-wrap{transition:transform .2s ease}
@@ -4043,6 +4060,10 @@ function exitSelect(fromPop){
   selMode = false;
   selIds.clear();
   el("chat-view").classList.remove("sel-mode");
+  const cvL = el("chat-view");
+  cvL.classList.add("sel-leave");
+  clearTimeout(cvL._selT);
+  cvL._selT = setTimeout(()=> cvL.classList.remove("sel-leave"), 380);
   el("sel-bar").hidden = true;
   el("sel-actions").hidden = true;
   document.querySelectorAll("#msgs-wrap .msg-row.selected").forEach(r=> r.classList.remove("selected"));
