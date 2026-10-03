@@ -2276,6 +2276,13 @@ document.addEventListener("visibilitychange", ()=>{
   }
 });
 
+// ── PWA: daftar service worker (perlu untuk pasang app ke skrin utama) ──
+if("serviceWorker" in navigator && location.protocol==="https:"){
+  window.addEventListener("load", ()=>{
+    navigator.serviceWorker.register("sw.js", { scope: "./" }).catch(e=>console.warn("SW gagal:", e));
+  });
+}
+
 </script>
 </body>
 </html>
