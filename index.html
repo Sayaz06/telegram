@@ -191,6 +191,17 @@ a{color:var(--accent);text-decoration:none}
 .gs-rc{width:78px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer}
 .gs-rc .d-avatar{width:58px;height:58px}
 .gs-rc span{font-size:13px;color:var(--fg);max-width:74px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* ── Chat Diarkib (macam Telegram) ── */
+.arch-av{background:#3d4d5f!important;color:#fff;display:flex;align-items:center;justify-content:center}
+.arch-av svg{width:30px;height:30px;fill:currentColor}
+.arch-row .d-preview{color:var(--fg3)}
+.d-badge.grey{background:var(--fg3)!important}
+#arch-back{display:none;width:44px;height:44px;margin-left:-8px;border-radius:50%;align-items:center;justify-content:center;color:var(--fg);background:none;border:none;flex-shrink:0}
+#arch-back svg{width:26px;height:26px;fill:currentColor}
+#sidebar.archive-view #arch-back{display:flex}
+#sidebar.archive-view #bottom-nav{transform:translateY(calc(100% + 40px));opacity:0;pointer-events:none}
+#sidebar.arch-in #dialog-list,#sidebar.arch-in #sidebar-header .app-name{animation:tabInRight .3s cubic-bezier(.2,.8,.2,1)}
+#sidebar.arch-out #dialog-list,#sidebar.arch-out #sidebar-header .app-name{animation:tabInLeft .3s cubic-bezier(.2,.8,.2,1)}
 
 /* ── DIALOG LIST ──────────────────────────────────────────────── */
 #dialog-list,.pane{flex:1;overflow-y:auto;padding-bottom:96px}
@@ -828,6 +839,7 @@ div#ctx-menu.msg-menu{gap:12px}
   <!-- SIDEBAR -->
   <div id="sidebar" class="open">
     <div id="sidebar-header">
+      <button id="arch-back" title="Kembali"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></button>
       <span class="app-name" id="sb-title">MyGram</span>
       <span id="conn-bar" hidden></span>
     </div>
@@ -1573,6 +1585,7 @@ async function loadDialogs(){
         lastId: m ? m.id : 0,
         unread: d.unreadCount || 0,
         pinned: !!d.pinned,
+        archived: (d.folderId ?? (d.dialog && d.dialog.folderId)) === 1,
         muted: !!(d.dialog && d.dialog.notifySettings && d.dialog.notifySettings.muteUntil && d.dialog.notifySettings.muteUntil*1000 > Date.now()),
         hasPhoto: !!(e.photo && e.photo.className!=="UserProfilePhotoEmpty" && e.photo.className!=="ChatPhotoEmpty"),
         online: !!(e.status && e.status.className==="UserStatusOnline"),
@@ -1731,6 +1744,47 @@ function exitSearchMode(fromPop){
 }
 el("search-inp").addEventListener("focus", enterSearchMode);
 el("search-x").onclick = (e)=>{ e.stopPropagation(); exitSearchMode(); };
+// ── Chat Diarkib ──
+var archiveView = false, archIgnorePop = false;
+function archRowHTML(arch){
+  const unread = arch.reduce((s,d)=> s + (d.unread||0), 0);
+  const last = arch.map(d=> d.lastMsgTime).filter(Boolean).sort().pop();
+  return `<div class="dialog-item arch-row">
+    <div class="d-avatar arch-av"><svg viewBox="0 0 24 24"><path d="M20.54 5.23 19.15 3.55C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5 6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z"/></svg></div>
+    <div class="d-info">
+      <div class="d-row1"><span class="d-name">Chat Diarkib</span><span class="d-time">${last?fmtListTime(last):""}</span></div>
+      <div class="d-row2"><span class="d-preview">${escHtml(arch.map(d=> d.name||"?").join(", "))}</span>${unread?`<span class="d-badge grey">${unread>999?"999+":unread}</span>`:""}</div>
+    </div>
+  </div>`;
+}
+function archAnim(cls){
+  const sb = el("sidebar");
+  sb.classList.remove("arch-in","arch-out");
+  void sb.offsetWidth;
+  sb.classList.add(cls);
+  clearTimeout(sb._archT);
+  sb._archT = setTimeout(()=> sb.classList.remove(cls), 320);
+}
+function openArchive(){
+  if(archiveView) return;
+  archiveView = true;
+  el("sidebar").classList.add("archive-view");
+  el("sb-title").textContent = "Chat Diarkib";
+  el("dialog-list").scrollTop = 0;
+  try{ history.pushState({ archive:1 }, ""); }catch(_){}
+  renderDialogs();
+  archAnim("arch-in");
+}
+function closeArchive(fromPop){
+  if(!archiveView) return;
+  archiveView = false;
+  el("sidebar").classList.remove("archive-view");
+  if(curTab==="chats") el("sb-title").textContent = "MyGram";
+  renderDialogs();
+  archAnim("arch-out");
+  if(!fromPop && history.state && history.state.archive){ archIgnorePop = true; history.back(); }
+}
+el("arch-back").onclick = (e)=>{ e.stopPropagation(); closeArchive(); };
 function renderDialogs(){
   const q = searchQuery.toLowerCase();
   const container = el("dialog-list");
@@ -1744,8 +1798,17 @@ function renderDialogs(){
   };
   const inSearch = curTab==="chats" && (searchMode || q);
   if(!inSearch){
-    container.innerHTML = dialogs.length ? dialogs.map(dialogHTML).join("") : `<div class="list-note">Tiada chat</div>`;
+    const pool = dialogs.filter(d=> archiveView ? d.archived : !d.archived);
+    let html = "";
+    if(!archiveView){
+      const arch = dialogs.filter(d=> d.archived);
+      if(arch.length) html += archRowHTML(arch);
+    }
+    html += pool.length ? pool.map(dialogHTML).join("") : `<div class="list-note">${archiveView?"Tiada chat diarkib":"Tiada chat"}</div>`;
+    container.innerHTML = html;
     bind();
+    const ar = container.querySelector(".arch-row");
+    if(ar) ar.onclick = openArchive;
     return;
   }
   const rx = q ? new RegExp(escHtml(searchQuery).replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"gi") : null;
@@ -1855,6 +1918,7 @@ function setTab(tab){
   el("pane-settings").hidden = tab!=="settings";
   el("pane-me").hidden = tab!=="me";
   el("search-wrap").hidden = !(tab==="chats" || tab==="contacts");
+  if(archiveView) closeArchive();
   el("sb-title").textContent = { chats:"MyGram", contacts:"Kenalan", settings:"Tetapan", me:"Profil" }[tab];
   if(searchMode) exitSearchMode();
   el("search-inp").value = ""; searchQuery = "";
@@ -4504,6 +4568,8 @@ window.addEventListener("popstate", ()=>{
   if(selMode){ exitSelect(true); return; }
   if(!el("ctx-menu").hidden){ hideCtx(); }
   if(searchMode && !activeChatId){ exitSearchMode(true); return; }
+  if(archIgnorePop){ archIgnorePop = false; return; }
+  if(archiveView && !activeChatId){ closeArchive(true); return; }
   if(!el("profile-view").hidden){ closeProfile(); return; }
   if(!el("chat-search-bar").hidden){ closeChatSearch(); return; }
   if(activeChatId) closeChat();
