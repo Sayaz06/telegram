@@ -663,6 +663,11 @@ div#reaction-picker{background:var(--bar-solid);border:none;border-radius:30px;b
 .fwd-label{font-size:12px;color:var(--accent);margin-bottom:3px}
 .bubble.flash{animation:flash 1.2s ease}
 @keyframes flash{0%,100%{filter:none}30%{filter:brightness(.8)}}
+/* Sorot mesej bila lompat ke situ (pin / balasan) — jalur biru penuh lebar macam Telegram */
+#chat-view .msg-row{position:relative;isolation:isolate}
+#chat-view .msg-row.hl::after{content:"";position:absolute;inset:-2px -12px;background:color-mix(in srgb,var(--accent) 45%,transparent);z-index:-1;pointer-events:none;animation:hlFade 2.4s ease forwards}
+@keyframes hlFade{0%{opacity:0}12%{opacity:1}65%{opacity:1}100%{opacity:0}}
+#chat-view #reply-bar{cursor:pointer}
 .fw-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
 .fw-avatar{overflow:hidden}
 #chat-avatar,.d-avatar,.msg-avatar-sm{color:#fff}
@@ -2746,9 +2751,18 @@ function scrollToBottom(smooth=false){
   const wrap = el("msgs-wrap");
   requestAnimationFrame(()=> wrap.scrollTo({ top: wrap.scrollHeight, behavior: smooth?"smooth":"auto" }));
 }
-window.scrollToMsg = function(msgId){
-  const n = document.querySelector(`#msgs-wrap [data-msg-id="${CSS.escape(msgId)}"]`);
-  if(n){ n.scrollIntoView({ behavior:"smooth", block:"center" }); n.classList.add("flash"); setTimeout(()=>n.classList.remove("flash"),1200); }
+window.scrollToMsg = function(msgId, noFetch){
+  msgId = String(msgId);
+  const n = document.querySelector(`#msgs-wrap .msg-row[data-msg-id="${CSS.escape(msgId)}"]`);
+  if(n){
+    n.scrollIntoView({ behavior:"smooth", block:"center" });
+    n.classList.remove("hl");
+    void n.offsetWidth;          // mula semula animasi
+    n.classList.add("hl");
+    clearTimeout(n._hlT);
+    n._hlT = setTimeout(()=> n.classList.remove("hl"), 2500);
+  }
+  else if(!noFetch && tgReady) jumpToMessage(Number(msgId));
   else toast("Mesej asal lebih lama — tekan Muat mesej lama");
 };
 
@@ -2935,7 +2949,7 @@ async function jumpToMessage(id){
     fillReplies(cid);
     renderMessages(cid, arr);
     fetchMissingReplies(cid);
-    setTimeout(()=> scrollToMsg(String(id)), 60);
+    setTimeout(()=> scrollToMsg(String(id), true), 60);
   }catch(e){ toast("Gagal: "+(e.message||e)); }
 }
 el("jump-latest").onclick = ()=>{
@@ -3714,7 +3728,11 @@ function cancelReply(){
   replyToMsg = null;
   el("reply-bar").hidden = true;
 }
-el("btn-cancel-reply").onclick = cancelReply;
+el("btn-cancel-reply").onclick = (e)=>{ e.stopPropagation(); cancelReply(); };
+// Ketik bar balasan (atas kotak taip) → pergi ke mesej asal & sorot
+el("reply-bar").addEventListener("click", ()=>{
+  if(replyToMsg) scrollToMsg(replyToMsg.id);
+});
 
 // ══════════════════════════════════════════════════════════════════
 // MENU KONTEKS
