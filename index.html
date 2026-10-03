@@ -311,6 +311,9 @@ div#ctx-menu{background:transparent;border:none;box-shadow:none;border-radius:0;
 :root{--menu-bg:#ffffff}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--menu-bg:#273446}}
 :root[data-theme="dark"]{--menu-bg:#273446}
+/* Ruang kosong lutsinar sekeliling menu = "luar popup" (tekan situ pun menu tutup) */
+div#ctx-menu{pointer-events:none}
+div#ctx-menu>*{pointer-events:auto}
 .ctx-list{background:var(--menu-bg);border-radius:18px;box-shadow:0 6px 24px rgba(0,0,0,.35);padding:6px 0;overflow:hidden;width:min(260px,100%)}
 .ctx-list.top-menu{width:auto;min-width:230px;max-width:calc(100vw - 16px);transform-origin:top right;animation:menuIn .16s ease-out}
 @keyframes menuIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
