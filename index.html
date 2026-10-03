@@ -467,9 +467,12 @@ a{color:var(--accent);text-decoration:none}
 
 /* ── DIRECT TELEGRAM ADDITIONS ─────────────────────────────── */
 #fb-login-wrap,#tg-phone-wrap,#tg-code-wrap,#tg-pass-wrap{display:flex;flex-direction:column;gap:12px}
-#conn-bar{padding:6px 12px;font-size:12px;text-align:center;background:var(--hover);color:var(--fg2)}
-#conn-bar.wait{background:rgba(255,152,0,.15);color:var(--warn)}
-#conn-bar.err{background:rgba(244,67,54,.12);color:var(--danger)}
+#conn-bar{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--fg2);max-width:62%;min-width:0;cursor:pointer}
+#conn-bar .cb-t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#conn-bar.wait::before{content:"";width:11px;height:11px;flex-shrink:0;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:connSpin .8s linear infinite}
+#conn-bar.err{color:var(--danger)}
+#conn-bar.err::before{content:"●";font-size:9px}
+@keyframes connSpin{to{transform:rotate(360deg)}}
 .list-note{padding:28px 16px;text-align:center;color:var(--fg3);font-size:13px}
 .msgs-note{margin:auto;color:var(--pill-fg);font-size:13px;text-align:center;padding:10px 16px;background:var(--pill);border-radius:14px}
 .msgs-note.err{color:var(--danger)}
@@ -548,8 +551,8 @@ a{color:var(--accent);text-decoration:none}
   <div id="sidebar" class="open">
     <div id="sidebar-header">
       <span class="app-name" id="sb-title">MyGram</span>
+      <span id="conn-bar" hidden></span>
     </div>
-    <div id="conn-bar" hidden></div>
     <div id="search-wrap">
       <input id="search-inp" placeholder="🔍 Cari perbualan..." type="search"/>
     </div>
@@ -890,8 +893,11 @@ function setConn(text, kind){
   const b = el("conn-bar");
   if(!text){ b.hidden = true; return; }
   b.hidden = false;
-  b.textContent = text;
+  b.title = text;
+  const shown = kind==="wait" ? (text.startsWith("Terputus") ? "Menyambung semula..." : "Menyambung...") : text;
+  b.innerHTML = `<span class="cb-t">${escHtml(shown)}</span>`;
   b.className = kind||"";
+  b.onclick = ()=> toast(text, 5000);
 }
 
 // ── INDEXEDDB CACHE ──────────────────────────────────────────────
