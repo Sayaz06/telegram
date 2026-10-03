@@ -690,6 +690,10 @@ div#ctx-menu.msg-menu{gap:12px}
 #chat-view .msg-row.hl::after{content:"";position:absolute;inset:-2px -12px;background:color-mix(in srgb,var(--accent) 45%,transparent);z-index:-1;pointer-events:none;animation:hlFade 2.4s ease forwards}
 @keyframes hlFade{0%{opacity:0}12%{opacity:1}65%{opacity:1}100%{opacity:0}}
 #chat-view #reply-bar{cursor:pointer}
+/* Menu mesej terbuka: chat lain digelapkan, mesej yang ditekan kekal terang (macam Telegram, lebih gelap) */
+#chat-view::after{content:"";position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:13;pointer-events:none;opacity:0;transition:opacity .18s ease}
+#chat-view.ctx-dim::after{opacity:1}
+#chat-view.ctx-dim .msg-row.ctx-target{z-index:14}
 .fw-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
 .fw-avatar{overflow:hidden}
 #chat-avatar,.d-avatar,.msg-avatar-sm{color:#fff}
@@ -2831,6 +2835,7 @@ function showMenu(items, x, y, anchor){
     n.onclick = (e)=>{ e.stopPropagation(); hideCtx(); items[Number(n.dataset.i)].action(); };
   });
   menu.classList.remove("msg-menu");
+  clearCtxDim();
   menu.style.alignItems = "flex-end";
   menu.hidden = false;
   const box = menu.firstElementChild;
@@ -3724,7 +3729,7 @@ document.addEventListener("click", e=>{
 });
 // Tekan mana-mana tempat di luar popup → popup tutup (sentuhan itu tak buat apa-apa lagi, macam Telegram)
 function closePopups(){
-  el("ctx-menu").hidden = true;
+  hideCtx();
   el("reaction-picker").hidden = true;
 }
 var popSwallowUntil = 0;
@@ -3844,6 +3849,9 @@ function buildCtxMenu(msg, isOut, x, y){
   const r = bubble ? bubble.getBoundingClientRect() : { left:x, right:x, top:y, bottom:y };
   menu.style.width = "";
   menu.classList.add("msg-menu");
+  clearCtxDim();
+  const tRow = document.querySelector(`#msgs-wrap .msg-row[data-msg-id="${CSS.escape(msg.id)}"]`);
+  if(tRow){ tRow.classList.add("ctx-target"); el("chat-view").classList.add("ctx-dim"); }
   menu.hidden = false;
   function place(){
     const w = menu.offsetWidth || 300, h = menu.offsetHeight || 400;
@@ -3989,7 +3997,12 @@ el("sel-reply").onclick = (e)=>{
   exitSelect();
   if(m) setReply(m);
 };
-function hideCtx(){ el("ctx-menu").hidden = true; }
+function clearCtxDim(){
+  const cv = el("chat-view");
+  if(cv) cv.classList.remove("ctx-dim");
+  document.querySelectorAll("#msgs-wrap .msg-row.ctx-target").forEach(r=> r.classList.remove("ctx-target"));
+}
+function hideCtx(){ el("ctx-menu").hidden = true; clearCtxDim(); }
 
 // ══════════════════════════════════════════════════════════════════
 // REAKSI
