@@ -505,7 +505,7 @@ a{color:var(--accent);text-decoration:none}
 
 <body>
 <!-- ═══════════════════ LOGIN SCREEN ═══════════════════════════ -->
-<div id="login-screen">
+<div id="login-screen" hidden>
   <div class="logo">✈️</div>
   <h1>MyGram</h1>
   <p id="login-sub">Log masuk dengan akaun admin anda</p>
@@ -548,7 +548,7 @@ a{color:var(--accent);text-decoration:none}
 </div>
 
 <!-- ═══════════════════ MAIN APP ══════════════════════════════ -->
-<div id="app" hidden>
+<div id="app">
   <!-- SIDEBAR -->
   <div id="sidebar" class="open">
     <div id="sidebar-header">
@@ -896,7 +896,7 @@ function setConn(text, kind){
   if(!text){ b.hidden = true; return; }
   b.hidden = false;
   b.title = text;
-  const shown = kind==="wait" ? (text.startsWith("Terputus") ? "Menyambung semula..." : "Menyambung...") : text;
+  const shown = kind==="wait" ? (text.startsWith("Terputus") ? "Menyambung semula..." : text.startsWith("Memuat") ? "Memuatkan..." : "Menyambung...") : text;
   b.innerHTML = `<span class="cb-t">${escHtml(shown)}</span>`;
   b.className = kind||"";
   b.onclick = ()=> toast(text, 5000);
@@ -999,8 +999,28 @@ el("btn-logout").onclick = async ()=>{
 };
 
 let appStarted = false;
+
+// Buka terus ke senarai chat (dari simpanan phone) sementara semak log masuk
+(async ()=>{
+  setConn("Memuatkan...", "wait");
+  const cached = await cacheGet("dialogs");
+  if(Array.isArray(cached) && cached.length && !dialogs.length){
+    dialogs = cached;
+    renderDialogs();
+    for(const d of cached.slice(0,40)){
+      if(!d.hasPhoto || avatarCache.has(d.cid)) continue;
+      const blob = await cacheGet("av:"+d.cid);
+      if(blob instanceof Blob) avatarCache.set(d.cid, URL.createObjectURL(blob));
+    }
+    if(!tgReady) renderDialogs();
+  } else if(!dialogs.length){
+    el("dialog-list").innerHTML = '<div class="list-note">Memuatkan chat...</div>';
+  }
+})();
+
 auth.onAuthStateChanged(user=>{
   if(!user){
+    setConn("");
     el("login-screen").hidden = false;
     el("app").hidden = true;
     showLoginStep("fb");
