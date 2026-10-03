@@ -180,6 +180,19 @@ a{color:var(--accent);text-decoration:none}
 @keyframes srchDown{from{transform:translateY(-56px)}to{transform:none}}
 @keyframes hdrShrink{from{transform:none;opacity:1}to{transform:scale(.35);opacity:0}}
 @keyframes hdrGrow{from{transform:scale(.35);opacity:0}to{transform:none;opacity:1}}
+/* ── Kotak carian ikut skrol (macam Telegram): senarai lalu di bawah tajuk, carian pudar & diganti ikon 🔍 ── */
+#sidebar{--sc:0}
+#sidebar-header{position:relative;z-index:4;background:var(--sidebar-bg);border-bottom:none}
+#search-wrap{border-bottom:none!important}
+#gs-tabs-wrap{border-bottom:none}
+#sidebar:not(.search-mode):not(.search-leaving) #search-wrap{margin-bottom:-56px;transform:translateY(calc(var(--sc) * -1px));opacity:calc(1 - var(--sc) / 40);pointer-events:auto}
+#sidebar.sc-hidden:not(.search-mode) #search-wrap{pointer-events:none}
+#sidebar:not(.search-mode) #dialog-list,#sidebar:not(.search-mode) #pane-contacts{padding-top:56px}
+#sidebar.search-mode #sidebar-header{z-index:1}
+#hdr-search{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--fg);background:none;border:none;flex-shrink:0;opacity:clamp(0, calc((var(--sc) - 30) / 26), 1);pointer-events:none;transform:scale(clamp(.6, calc(.6 + (var(--sc) - 30) / 65), 1))}
+#hdr-search svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+#sidebar.sc-hidden #hdr-search{pointer-events:auto}
+#sidebar.search-mode #hdr-search,#sidebar.on-settings #hdr-search{display:none}
 #gs-tabs{display:flex;gap:2px;height:44px;align-items:center;padding:0 4px;border-radius:22px;background:var(--hover);overflow-x:auto;scrollbar-width:none;box-sizing:border-box}
 #gs-tabs::-webkit-scrollbar{display:none}
 #gs-tabs button{flex-shrink:0;height:36px;padding:0 16px;border-radius:18px;font-size:15px;font-weight:600;color:var(--fg2);background:none;border:none}
@@ -870,6 +883,7 @@ div#ctx-menu.msg-menu{gap:12px}
       <button id="arch-back" title="Kembali"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></button>
       <span class="app-name" id="sb-title">MyGram</span>
       <span id="conn-bar" hidden></span>
+      <button id="hdr-search" title="Cari"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button>
     </div>
     <div id="search-wrap">
       <svg class="s-ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
@@ -1753,6 +1767,7 @@ function renderGsTabs(){
 function enterSearchMode(){
   if(curTab !== "chats" || searchMode) return;
   searchMode = true;
+  savedListScroll = el("dialog-list").scrollTop;
   gsTab = "chats";
   renderGsTabs();
   el("sidebar").classList.add("search-mode");
@@ -1773,10 +1788,39 @@ function exitSearchMode(fromPop){
   gsTab = "chats";
   el("search-inp").blur();
   renderDialogs();
+  // Kembali ke kedudukan skrol asal; kotak carian muncul di atas (hilang semula bila skrol lagi)
+  const dl = el("dialog-list");
+  dl.scrollTop = savedListScroll;
+  scLast = dl.scrollTop;
+  setSc(0);
   if(!fromPop && history.state && history.state.search){ searchIgnorePop = true; history.back(); }
 }
 el("search-inp").addEventListener("focus", enterSearchMode);
 el("search-x").onclick = (e)=>{ e.stopPropagation(); exitSearchMode(); };
+// ── Kotak carian runtuh ikut skrol ──
+var savedListScroll = 0, scVal = 0, scLast = 0;
+function setSc(v){
+  scVal = Math.max(0, Math.min(56, v));
+  const sb = el("sidebar");
+  sb.style.setProperty("--sc", scVal);
+  sb.classList.toggle("sc-hidden", scVal >= 40);
+}
+function onListScroll(e){
+  const box = e.currentTarget;
+  if(searchMode || box.hidden) return;
+  const st = box.scrollTop, d = st - scLast;
+  scLast = st;
+  let v = scVal;
+  if(d > 0) v += d;                      // skrol ke bawah senarai → carian naik & pudar
+  if(st < 56) v = Math.min(v, st);       // di atas sekali → carian kembali
+  if(v !== scVal) setSc(v);
+}
+["dialog-list","pane-contacts"].forEach(id=> el(id).addEventListener("scroll", onListScroll, { passive:true }));
+el("hdr-search").onclick = (e)=>{
+  e.stopPropagation();
+  setSc(0);
+  el("search-inp").focus();
+};
 // ── Chat Diarkib ──
 var archiveView = false, archIgnorePop = false;
 function archRowHTML(arch){
@@ -1962,6 +2006,9 @@ function setTab(tab){
   if(tab==="settings") renderSettings();
   if(tab==="me") renderMe();
   if(prevTab !== tab) tabSlide(prevTab, tab);
+  const pnl = tab==="chats" ? el("dialog-list") : tab==="contacts" ? el("pane-contacts") : null;
+  scLast = pnl ? pnl.scrollTop : 0;
+  setSc(pnl ? Math.min(56, pnl.scrollTop) : 0);
 }
 document.querySelectorAll(".nav-btn").forEach(b=>{ b.onclick = ()=> setTab(b.dataset.tab); });
 
