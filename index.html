@@ -159,6 +159,31 @@ a{color:var(--accent);text-decoration:none}
 #search-wrap{padding:8px 12px;border-bottom:1px solid var(--border)}
 #search-inp{width:100%;background:var(--hover);border-radius:20px;padding:8px 14px;font-size:13px;color:var(--fg)}
 #search-inp::placeholder{color:var(--fg3)}
+/* ── Header & carian: tinggi sama (56px) supaya carian boleh "naik" ganti tajuk (macam Telegram) ── */
+#sidebar-header{height:56px;padding:0 16px;box-sizing:border-box;transition:margin-top .3s cubic-bezier(.2,.8,.2,1),opacity .22s ease}
+#sidebar-header .app-name{font-size:22px}
+#search-wrap{position:relative;padding:6px 12px;box-sizing:border-box}
+#search-inp{height:44px;border-radius:22px;padding:0 44px 0 46px;font-size:16px;box-sizing:border-box}
+#search-wrap .s-ic{position:absolute;left:28px;top:50%;transform:translateY(-50%);width:22px;height:22px;fill:none;stroke:var(--fg2);stroke-width:2.2;stroke-linecap:round;pointer-events:none}
+#search-x{display:none;position:absolute;right:18px;top:50%;transform:translateY(-50%);width:34px;height:34px;align-items:center;justify-content:center;border-radius:50%;color:var(--fg2);background:none;border:none}
+#search-x svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+#sidebar.search-mode #search-x{display:flex}
+#sidebar.search-mode #sidebar-header{margin-top:-56px;opacity:0;pointer-events:none}
+#sidebar.search-mode #search-wrap{border-bottom:none}
+#gs-tabs-wrap{display:none;padding:0 12px 6px;border-bottom:1px solid var(--border)}
+#sidebar.search-mode #gs-tabs-wrap{display:block;animation:gsTabsIn .3s cubic-bezier(.2,.8,.2,1)}
+@keyframes gsTabsIn{from{opacity:0;transform:translateY(-24px)}to{opacity:1;transform:none}}
+#gs-tabs{display:flex;gap:2px;height:44px;align-items:center;padding:0 4px;border-radius:22px;background:var(--hover);overflow-x:auto;scrollbar-width:none;box-sizing:border-box}
+#gs-tabs::-webkit-scrollbar{display:none}
+#gs-tabs button{flex-shrink:0;height:36px;padding:0 16px;border-radius:18px;font-size:15px;font-weight:600;color:var(--fg2);background:none;border:none}
+#gs-tabs button.on{background:var(--nav-active);color:var(--accent)}
+#bottom-nav{transition:transform .3s cubic-bezier(.2,.8,.2,1),opacity .25s ease}
+#sidebar.search-mode #bottom-nav{transform:translateY(calc(100% + 40px));opacity:0;pointer-events:none}
+.gs-recent{display:flex;gap:2px;overflow-x:auto;padding:14px 8px 10px;scrollbar-width:none}
+.gs-recent::-webkit-scrollbar{display:none}
+.gs-rc{width:78px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer}
+.gs-rc .d-avatar{width:58px;height:58px}
+.gs-rc span{font-size:13px;color:var(--fg);max-width:74px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ── DIALOG LIST ──────────────────────────────────────────────── */
 #dialog-list,.pane{flex:1;overflow-y:auto;padding-bottom:96px}
@@ -786,8 +811,12 @@ div#ctx-menu.msg-menu{gap:12px}
       <span id="conn-bar" hidden></span>
     </div>
     <div id="search-wrap">
-      <input id="search-inp" placeholder="🔍 Cari perbualan..." type="search"/>
+      <svg class="s-ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+      <input id="search-inp" placeholder="Cari perbualan" type="search" enterkeyhint="search"/>
+      <button id="search-x" title="Tutup carian"><svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     </div>
+    <!-- Tab carian (muncul bila tekan kotak carian) -->
+    <div id="gs-tabs-wrap"><div id="gs-tabs"></div></div>
     <div id="dialog-list"></div>
 
     <!-- Kenalan -->
@@ -1556,15 +1585,24 @@ async function loadAvatars(){
 // ── RENDER SENARAI CHAT ──────────────────────────────────────────
 // Carian global mesej (semua chat) — macam kotak carian Telegram
 let gsTimer = null;
-let gsState = { q:"", items:null, err:"" };
-async function runGlobalSearch(q){
-  if(!tgReady){ gsState = { q, items:[], err:"Belum bersambung ke Telegram" }; renderDialogs(); return; }
+let gsState = { key:"", items:null, err:"" };
+var searchMode = false, searchIgnorePop = false, gsTab = "chats";
+const GS_TABS = [["chats","Chat"],["channels","Saluran"],["media","Media"],["links","Pautan"],["files","Fail"],["music","Muzik"],["voice","Suara"]];
+const GS_FILTER = { media:"InputMessagesFilterPhotoVideo", links:"InputMessagesFilterUrl", files:"InputMessagesFilterDocument", music:"InputMessagesFilterMusic", voice:"InputMessagesFilterRoundVoice" };
+function gsKey(){ return gsTab + "|" + searchQuery; }
+function gsNeedsText(tab){ return tab==="chats" || tab==="channels"; }
+async function runGlobalSearch(q, tab){
+  tab = tab || gsTab;
+  const key = tab + "|" + q;
+  if(!tgReady){ gsState = { key, items:[], err:"Belum bersambung ke Telegram" }; renderDialogs(); return; }
   try{
+    const fName = GS_FILTER[tab];
     const r = await client.invoke(new Api.messages.SearchGlobal({
-      q, filter: new Api.InputMessagesFilterEmpty(), minDate:0, maxDate:0,
+      q, filter: fName ? new Api[fName]() : new Api.InputMessagesFilterEmpty(), minDate:0, maxDate:0,
       offsetRate:0, offsetPeer: new Api.InputPeerEmpty(), offsetId:0, limit:40,
+      broadcastsOnly: tab==="channels" ? true : undefined,
     }));
-    if(q !== searchQuery) return;
+    if(key !== gsKey()) return;
     const ents = new Map();
     (r.users||[]).forEach(u=> ents.set(peerKey(u), u));
     (r.chats||[]).forEach(c=> ents.set(peerKey(c), c));
@@ -1574,19 +1612,30 @@ async function runGlobalSearch(q){
       if(e && !entities.has(cid)) entities.set(cid, e);
       const d = dialogs.find(x=> x.cid===cid);
       if(!rawMsgs[cid]) rawMsgs[cid] = new Map();
+      const md = detectMedia(m);
+      const txt = (tab==="files" || tab==="music") && md.fileName ? "📎 " + md.fileName + (m.message ? " — " + m.message : "")
+        : (m.message || msgPreview(m) || "");
       return { cid, id:String(m.id), name: d?.name || (e ? entName(e) : "Chat"),
         isUser: e ? e.className==="User" : true,
-        text: (m.message || msgPreview(m) || "").replace(/\s+/g," "),
+        text: txt.replace(/\s+/g," "),
         date: new Date(m.date*1000).toISOString(), out: !!m.out };
     });
-    gsState = { q, items, err:"" };
+    gsState = { key, items, err:"" };
   }catch(e){
-    if(q !== searchQuery) return;
-    gsState = { q, items:[], err:"Gagal cari: "+(e.message||e) };
+    if(key !== gsKey()) return;
+    gsState = { key, items:[], err:"Gagal cari: "+(e.message||e) };
   }
   if(curTab==="chats") renderDialogs();
 }
+function scheduleGs(delay){
+  clearTimeout(gsTimer);
+  const q = searchQuery, tab = gsTab;
+  if(gsNeedsText(tab) && q.length < 2) return;
+  if(gsState.key === tab + "|" + q) return;
+  gsTimer = setTimeout(()=> runGlobalSearch(q, tab), delay==null ? 450 : delay);
+}
 function gsSnippet(text, q){
+  if(!q) return escHtml(text.substring(0, 160));
   const i = text.toLowerCase().indexOf(q.toLowerCase());
   let t = text;
   if(i > 28) t = "…" + text.slice(i - 20);
@@ -1611,32 +1660,89 @@ async function openGsResult(cid, id, name, isUser){
   if(activeChatId !== cid) await openChat(cid);
   if(activeChatId === cid) jumpToMessage(Number(id));
 }
+// ── Mod carian (macam Telegram): tajuk ditolak keluar, tab carian muncul, nav bawah turun ──
+function renderGsTabs(){
+  el("gs-tabs").innerHTML = GS_TABS.map(([k,l])=> `<button data-k="${k}" class="${k===gsTab?"on":""}">${l}</button>`).join("");
+  el("gs-tabs").querySelectorAll("button").forEach(b=>{
+    b.onclick = ()=>{
+      gsTab = b.dataset.k;
+      renderGsTabs();
+      renderDialogs();
+      scheduleGs(0);
+      b.scrollIntoView({ inline:"center", block:"nearest", behavior:"smooth" });
+    };
+  });
+}
+function enterSearchMode(){
+  if(curTab !== "chats" || searchMode) return;
+  searchMode = true;
+  gsTab = "chats";
+  renderGsTabs();
+  el("sidebar").classList.add("search-mode");
+  try{ history.pushState({ search:1 }, ""); }catch(e){}
+  renderDialogs();
+}
+function exitSearchMode(fromPop){
+  if(!searchMode) return;
+  searchMode = false;
+  clearTimeout(gsTimer);
+  el("sidebar").classList.remove("search-mode");
+  el("search-inp").value = "";
+  searchQuery = "";
+  gsTab = "chats";
+  el("search-inp").blur();
+  renderDialogs();
+  if(!fromPop && history.state && history.state.search){ searchIgnorePop = true; history.back(); }
+}
+el("search-inp").addEventListener("focus", enterSearchMode);
+el("search-x").onclick = (e)=>{ e.stopPropagation(); exitSearchMode(); };
 function renderDialogs(){
   const q = searchQuery.toLowerCase();
-  const list = q ? dialogs.filter(d=>(d.name||"").toLowerCase().includes(q)) : dialogs;
   const container = el("dialog-list");
-  if(!q && !list.length){
-    container.innerHTML = `<div class="list-note">Tiada chat</div>`;
+  const bind = ()=>{
+    container.querySelectorAll(".dialog-item, .gs-rc").forEach(item=>{
+      if(item.dataset.msg){
+        const it = (gsState.items||[]).find(x=> x.cid===item.dataset.id && x.id===item.dataset.msg) || {};
+        item.onclick = ()=> openGsResult(item.dataset.id, item.dataset.msg, it.name, it.isUser);
+      } else item.onclick = ()=> openChat(item.dataset.id);
+    });
+  };
+  const inSearch = curTab==="chats" && (searchMode || q);
+  if(!inSearch){
+    container.innerHTML = dialogs.length ? dialogs.map(dialogHTML).join("") : `<div class="list-note">Tiada chat</div>`;
+    bind();
     return;
   }
-  let html = list.map(d=> q ? dialogHTML(d).replace(/(<span class="d-name">)([^<]*)(<\/span>)/, (m,a,b,c)=> a + b.replace(new RegExp(escHtml(searchQuery).replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"gi"), x=>`<mark>${x}</mark>`) + c) : dialogHTML(d)).join("");
-  if(q){
-    let body;
-    if(searchQuery.length < 2) body = `<div class="gs-note">Taip sekurang-kurangnya 2 huruf untuk cari mesej</div>`;
-    else if(gsState.q !== searchQuery) body = `<div class="gs-note">Mencari mesej...</div>`;
-    else if(gsState.err) body = `<div class="gs-note">${escHtml(gsState.err)}</div>`;
-    else if(!gsState.items.length) body = `<div class="gs-note">Tiada mesej dijumpai</div>`;
-    else body = gsState.items.map(it=> gsItemHTML(it, searchQuery)).join("");
-    if(!list.length) html = `<div class="gs-note">Tiada chat bernama "${escHtml(searchQuery)}"</div>`;
-    html += `<div class="gs-head">Mesej</div>` + body;
+  const rx = q ? new RegExp(escHtml(searchQuery).replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"gi") : null;
+  const markName = d=> dialogHTML(d).replace(/(<span class="d-name">)([^<]*)(<\/span>)/, (m,a,b,c)=> a + (rx ? b.replace(rx, x=>`<mark>${x}</mark>`) : b) + c);
+  const note = t=> `<div class="gs-note">${t}</div>`;
+  const body = ()=>{
+    if(gsNeedsText(gsTab) && searchQuery.length < 2) return note("Taip sekurang-kurangnya 2 huruf untuk cari mesej");
+    if(gsState.key !== gsKey()) return note("Mencari...");
+    if(gsState.err) return note(escHtml(gsState.err));
+    if(!gsState.items.length) return note("Tiada hasil");
+    return gsState.items.map(it=> gsItemHTML(it, searchQuery)).join("");
+  };
+  let html = "";
+  if(gsTab==="chats" || gsTab==="channels"){
+    const pool = gsTab==="channels" ? dialogs.filter(d=> d.isChannel) : dialogs;
+    if(!q){
+      if(gsTab==="chats"){
+        html = `<div class="gs-recent">${pool.slice(0,12).map(d=>{
+          const av = avatarCache.get(d.cid);
+          return `<div class="gs-rc" data-id="${escHtml(d.cid)}"><div class="d-avatar" style="background:${nameColor(d.name)}">${av?`<img src="${av}" alt=""/>`:escHtml(avatarInitial(d.name||"?"))}${d.online?'<span class="online-dot"></span>':""}</div><span>${escHtml(d.name||"?")}</span></div>`;
+        }).join("")}</div>`;
+      } else html = pool.map(dialogHTML).join("") || note("Tiada saluran");
+    } else {
+      const list = pool.filter(d=> (d.name||"").toLowerCase().includes(q));
+      html = list.length ? list.map(markName).join("") : note(`Tiada ${gsTab==="channels"?"saluran":"chat"} bernama "${escHtml(searchQuery)}"`);
+      html += `<div class="gs-head">Mesej</div>` + body();
+    }
+  } else {
+    html = body();
   }
   container.innerHTML = html;
-  container.querySelectorAll(".dialog-item").forEach(item=>{
-    if(item.dataset.msg){
-      const it = (gsState.items||[]).find(x=> x.cid===item.dataset.id && x.id===item.dataset.msg) || {};
-      item.onclick = ()=> openGsResult(item.dataset.id, item.dataset.msg, it.name, it.isUser);
-    } else item.onclick = ()=> openChat(item.dataset.id);
-  });
+  bind();
 }
 function dialogHTML(d){
   const online = d.online ? '<span class="online-dot"></span>' : "";
@@ -1667,10 +1773,7 @@ el("search-inp").oninput = e=>{
   clearTimeout(gsTimer);
   if(curTab==="contacts"){ renderContacts(); return; }
   renderDialogs();
-  if(searchQuery.length >= 2){
-    const q = searchQuery;
-    gsTimer = setTimeout(()=> runGlobalSearch(q), 450);
-  }
+  scheduleGs();
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -1718,8 +1821,9 @@ function setTab(tab){
   el("pane-me").hidden = tab!=="me";
   el("search-wrap").hidden = !(tab==="chats" || tab==="contacts");
   el("sb-title").textContent = { chats:"MyGram", contacts:"Kenalan", settings:"Tetapan", me:"Profil" }[tab];
+  if(searchMode) exitSearchMode();
   el("search-inp").value = ""; searchQuery = "";
-  el("search-inp").placeholder = tab==="contacts" ? "🔍 Cari kenalan..." : "🔍 Cari perbualan...";
+  el("search-inp").placeholder = tab==="contacts" ? "Cari kenalan" : "Cari perbualan";
   if(tab==="chats") renderDialogs();
   if(tab==="contacts") loadContacts();
   if(tab==="settings") renderSettings();
@@ -4287,9 +4391,11 @@ el("back-btn").onclick = (e)=>{
 };
 window.addEventListener("popstate", ()=>{
   if(selIgnorePop){ selIgnorePop = false; return; }
+  if(searchIgnorePop){ searchIgnorePop = false; return; }
   if(!el("media-viewer").hidden){ el("btn-close-media").onclick(); return; }
   if(selMode){ exitSelect(true); return; }
   if(!el("ctx-menu").hidden){ hideCtx(); }
+  if(searchMode && !activeChatId){ exitSearchMode(true); return; }
   if(!el("profile-view").hidden){ closeProfile(); return; }
   if(!el("chat-search-bar").hidden){ closeChatSearch(); return; }
   if(activeChatId) closeChat();
