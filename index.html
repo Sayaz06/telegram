@@ -241,6 +241,16 @@ a{color:var(--accent);text-decoration:none}
 #mp-back svg{width:22px;height:22px;fill:currentColor}
 /* ── GELEMBUNG MESEJ GAYA TELEGRAM ───────────────────────────── */
 #msgs-wrap{overflow-x:hidden}
+/* Bar atas & bawah terapung DI ATAS chat — mesej lalu di belakangnya */
+#chat-top{position:absolute;top:0;left:0;right:0;z-index:15;display:flex;flex-direction:column;pointer-events:none}
+#chat-top>*{pointer-events:auto}
+#chat-view #chat-header{pointer-events:none}
+#chat-view #chat-header>*{pointer-events:auto}
+#chat-view #input-area{position:absolute;left:0;right:0;bottom:0;z-index:15;pointer-events:none}
+#chat-view #input-area>*{pointer-events:auto}
+#chat-view #msgs-wrap{flex:1;min-height:0;padding-top:calc(var(--top-h,66px) + 4px);padding-bottom:calc(var(--bot-h,64px) + 6px)}
+#chat-view .date-divider{top:0}
+#chat-view #jump-latest{bottom:calc(var(--bot-h,64px) + 12px)}
 #chat-view .msg-bubble-wrap{min-width:0}
 @media(max-width:640px){#chat-view .msg-bubble-wrap{max-width:86%}}
 #chat-view .bubble{max-width:100%;font-size:16.5px;line-height:1.35;padding:6px 11px 6px 12px;border-radius:18px}
@@ -680,6 +690,7 @@ a{color:var(--accent);text-decoration:none}
 
     <!-- Chat View (hidden until chat selected) -->
     <div id="chat-view" hidden style="display:flex;flex-direction:column;height:100%;overflow:hidden">
+      <div id="chat-top">
       <!-- Header (pil terapung) -->
       <div id="chat-header">
         <button class="bar-circle" id="back-btn" title="Kembali">
@@ -706,10 +717,11 @@ a{color:var(--accent);text-decoration:none}
         </button>
       </div>
       <div id="chat-search-results" hidden></div>
-      <button id="jump-latest" hidden>⬇ Mesej terkini</button>
 
       <!-- Typing indicator -->
       <div id="typing-indicator"></div>
+      </div>
+      <button id="jump-latest" hidden>⬇ Mesej terkini</button>
 
       <!-- Messages -->
       <div id="msgs-wrap">
@@ -1994,13 +2006,35 @@ function renderMessages(chatId, arr, keepScroll){
 // Tarikh terapung: nampak masa skrol, hilang bila berhenti skrol
 function markStuckDates(){
   const wrap = el("msgs-wrap");
-  const top = wrap.getBoundingClientRect().top;
+  const top = wrap.getBoundingClientRect().top + (parseFloat(getComputedStyle(wrap).paddingTop)||0);
   wrap.querySelectorAll(".day-group").forEach(g=>{
     const d = g.firstElementChild;
     if(!d) return;
     d.classList.toggle("stuck", g.getBoundingClientRect().top < top - 2);
   });
 }
+// Ukur tinggi bar atas/bawah → padding chat (mesej boleh skrol ke belakang bar)
+(function(){
+  const cv = el("chat-view"), top = el("chat-top"), bot = el("input-area"), wrap = el("msgs-wrap");
+  let lastBot = -1;
+  function syncBars(){
+    const th = top.offsetHeight, bh = bot.offsetHeight;
+    if(!th && !bh) return;
+    const nearBottom = wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight < 120;
+    cv.style.setProperty("--top-h", th+"px");
+    cv.style.setProperty("--bot-h", bh+"px");
+    if(lastBot >= 0 && bh !== lastBot){
+      if(nearBottom) wrap.scrollTop = wrap.scrollHeight;
+      else wrap.scrollTop += (bh - lastBot);
+    }
+    lastBot = bh;
+  }
+  if(window.ResizeObserver){
+    const ro = new ResizeObserver(syncBars);
+    ro.observe(top); ro.observe(bot);
+  }
+  window.addEventListener("resize", syncBars);
+})();
 let scrollIdleTimer = null;
 el("msgs-wrap").addEventListener("scroll", ()=>{
   const wrap = el("msgs-wrap");
