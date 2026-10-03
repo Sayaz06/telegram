@@ -310,10 +310,29 @@ div#ctx-menu{background:transparent;border:none;box-shadow:none;border-radius:0;
 .ctx-react.expanded .ctx-more,.ctx-react.expanded+.ctx-list{display:none}
 .ctx-list{background:var(--bar-solid);border-radius:18px;box-shadow:var(--bar-shadow);padding:6px 0;overflow:hidden;width:min(260px,100%)}
 #ctx-menu .ctx-item{padding:13px 18px;gap:22px;font-size:16px;color:var(--fg)}
-#ctx-menu .ctx-item svg{width:24px;height:24px;fill:var(--fg2);flex-shrink:0}
+#ctx-menu .ctx-item svg{width:24px;height:24px;fill:none;stroke:var(--fg);flex-shrink:0}
 #ctx-menu .ctx-item.danger{color:var(--danger)}
-#ctx-menu .ctx-item.danger svg{fill:var(--danger)}
+#ctx-menu .ctx-item.danger svg{stroke:var(--danger)}
 div#reaction-picker{background:var(--bar-solid);border:none;border-radius:30px;box-shadow:var(--bar-shadow);padding:6px 8px}
+/* Tekan lama → mod pilih (macam Telegram) */
+#chat-view .bubble{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#sel-bar{display:flex;align-items:center;gap:8px;padding:8px 10px 6px}
+.sel-pill{height:50px;border-radius:26px;background:var(--bar-bg);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-shadow:var(--bar-shadow);display:flex;align-items:center;color:var(--fg)}
+#sel-count{flex:1;min-width:0;padding:0 20px;font-size:18px;font-weight:600;white-space:nowrap}
+.sel-acts{padding:0 6px;flex-shrink:0}
+.sel-acts button,#sel-close{display:flex;align-items:center;justify-content:center;color:var(--fg);background:none;border:none}
+.sel-acts button{width:44px;height:44px}
+#sel-close{background:var(--bar-bg)}
+#sel-bar svg,#sel-actions svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#sel-actions{display:flex;gap:10px;padding:0 2px}
+.sel-big{flex:1;height:52px;border-radius:26px;background:var(--bar-bg);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-shadow:var(--bar-shadow);display:flex;align-items:center;justify-content:center;gap:10px;font-size:17px;font-weight:600;color:var(--fg);border:none}
+#chat-view.sel-mode #chat-header,#chat-view.sel-mode #input-row,#chat-view.sel-mode #reply-bar,#chat-view.sel-mode #emoji-picker,#chat-view.sel-mode #voice-overlay{display:none!important}
+.sel-check{display:none}
+#chat-view.sel-mode .msg-row{position:relative;padding-left:42px;isolation:isolate;cursor:pointer}
+#chat-view.sel-mode .sel-check{display:block;position:absolute;left:2px;bottom:8px;width:26px;height:26px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 3px rgba(0,0,0,.45)}
+#chat-view.sel-mode .msg-row.selected .sel-check{background:#3fb950;border-color:#fff}
+#chat-view.sel-mode .msg-row.selected .sel-check::after{content:"";position:absolute;left:7px;top:3px;width:6px;height:11px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
+#chat-view.sel-mode .msg-row.selected::before{content:"";position:absolute;inset:0 -12px;background:color-mix(in srgb,var(--accent) 24%,transparent);z-index:-1}
 .d-info{flex:1;min-width:0}
 .d-row1{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
 .d-name{font-weight:600;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
@@ -759,6 +778,17 @@ div#reaction-picker{background:var(--bar-solid);border:none;border-radius:30px;b
         </button>
       </div>
 
+      <!-- Bar mod pilih (tekan lama mesej) -->
+      <div id="sel-bar" hidden>
+        <button class="bar-circle" id="sel-close" title="Batal"><svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+        <div class="sel-pill" id="sel-count">1 dipilih</div>
+        <div class="sel-pill sel-acts">
+          <button id="sel-copy" title="Salin"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+          <button id="sel-fwd" title="Majukan"><svg viewBox="0 0 24 24"><polyline points="15 17 20 12 15 7"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/></svg></button>
+          <button id="sel-del" title="Padam"><svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
+        </div>
+      </div>
+
       <!-- Carian dalam chat -->
       <div id="chat-search-bar" hidden>
         <input id="chat-search-inp" type="search" placeholder="Cari dalam chat..." enterkeyhint="search"/>
@@ -781,6 +811,11 @@ div#reaction-picker{background:var(--bar-solid);border:none;border-radius:30px;b
 
       <!-- Input area -->
       <div id="input-area">
+        <!-- Butang bawah mod pilih -->
+        <div id="sel-actions" hidden>
+          <button class="sel-big" id="sel-reply">Balas <svg viewBox="0 0 24 24"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg></button>
+          <button class="sel-big" id="sel-forward"><svg viewBox="0 0 24 24"><polyline points="15 17 20 12 15 7"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/></svg> Majukan</button>
+        </div>
         <!-- Reply bar -->
         <div id="reply-bar" hidden>
           <div class="rb-content">
@@ -2143,7 +2178,7 @@ function buildMsgElement(msg, prevMsg, nextMsg){
   const showAvatar = !isOut && isGroup;
 
   const row = document.createElement("div");
-  row.className = `msg-row ${isOut?"out":"in"}${contPrev?" cont-prev":""}${contNext?" cont-next":""}${albPrev?" alb-prev":""}${albNext?" alb-next":""}`;
+  row.className = `msg-row ${isOut?"out":"in"}${contPrev?" cont-prev":""}${contNext?" cont-next":""}${albPrev?" alb-prev":""}${albNext?" alb-next":""}${selMode&&selIds.has(msg.id)?" selected":""}`;
   row.dataset.msgId = msg.id;
 
   let avatarHtml = "";
@@ -2169,6 +2204,7 @@ function buildMsgElement(msg, prevMsg, nextMsg){
         </div>`;
 
   row.innerHTML = `
+    <span class="sel-check"></span>
     ${avatarHtml}
     <div class="msg-bubble-wrap">
       ${isSticker ? senderHtml : ""}
@@ -2194,17 +2230,31 @@ function buildMsgElement(msg, prevMsg, nextMsg){
     bubble.classList.add("meta-inline");
   }
   let pressTimer;
-  bubble.addEventListener("contextmenu", e=>{ e.preventDefault(); buildCtxMenu(msg, isOut, e.clientX, e.clientY); });
-  bubble.addEventListener("touchstart", ()=>{ pressTimer = setTimeout(()=>{
-    const r = bubble.getBoundingClientRect(); buildCtxMenu(msg, isOut, r.left, r.bottom);
-  }, 550); }, { passive:true });
-  bubble.addEventListener("touchend", ()=> clearTimeout(pressTimer));
+  // Klik kanan (komputer) → menu. Tekan lama di phone → mod pilih.
+  bubble.addEventListener("contextmenu", e=>{
+    e.preventDefault();
+    if(selMode || Date.now() - lastTouchAt < 1500) return;
+    buildCtxMenu(msg, isOut, e.clientX, e.clientY);
+  });
+  bubble.addEventListener("touchstart", ()=>{
+    lastTouchAt = Date.now();
+    clearTimeout(pressTimer);
+    pressTimer = setTimeout(()=>{
+      suppressClickUntil = Infinity;   // telan klik bila jari dilepaskan
+      if(selMode) toggleSel(msg.id); else enterSelect(msg);
+      try{ navigator.vibrate && navigator.vibrate(12); }catch(e){}
+    }, 450);
+  }, { passive:true });
+  const endPress = ()=>{ clearTimeout(pressTimer); if(suppressClickUntil===Infinity) suppressClickUntil = Date.now() + 400; };
+  bubble.addEventListener("touchend", endPress);
+  bubble.addEventListener("touchcancel", endPress);
   bubble.addEventListener("touchmove", ()=> clearTimeout(pressTimer), { passive:true });
-  let lastTap = 0;
-  bubble.addEventListener("touchend", e=>{
-    const now = Date.now();
-    if(now-lastTap < 300) showReactionPickerById(msg);
-    lastTap = now;
+  // Ketik sekali → menu reaksi + senarai (macam Telegram)
+  bubble.addEventListener("click", e=>{
+    if(selMode || Date.now() < suppressClickUntil) return;
+    if(e.target.closest("a,button,[data-act],.reaction-chip,.reply-quote,video,audio")) return;
+    e.stopPropagation();
+    buildCtxMenu(msg, isOut, e.clientX, e.clientY + 20);
   });
   row.querySelectorAll(".reaction-chip").forEach(chip=>{
     chip.onclick = (e)=>{ e.stopPropagation(); sendReaction(msg, chip.dataset.emoji); };
@@ -2221,16 +2271,24 @@ const TG_ICON = {
   down:"M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z",
   file:"M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 7V3.5L18.5 9H13z",
   more:"M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4z",
-  reply:"M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z",
-  copy:"M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z",
-  link:"M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.710-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z",
-  save:"M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z",
-  fwd:"M14 9V5l7 7-7 7v-4.1c-5 0-8.5 1.6-11 5.1 1-5 4-10 11-11z",
-  pin:"M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z",
-  del:"M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z",
   chev:"M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"
 };
-function tgSvg(n){ return `<svg viewBox="0 0 24 24"><path d="${TG_ICON[n]}"/></svg>`; }
+// Ikon garis (outline) untuk menu — macam Telegram
+const TG_LINE = {
+  reply:'<polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/>',
+  copy:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  link:'<path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><line x1="8" y1="12" x2="16" y2="12"/>',
+  save:'<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
+  share:'<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>',
+  fwd:'<polyline points="15 17 20 12 15 7"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/>',
+  pin:'<path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>',
+  select:'<circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/>',
+  del:'<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>'
+};
+function tgSvg(n){
+  if(TG_LINE[n]) return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${TG_LINE[n]}</svg>`;
+  return `<svg viewBox="0 0 24 24"><path d="${TG_ICON[n]}"/></svg>`;
+}
 
 function fmtDur(s){ s = Math.round(s||0); return `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`; }
 
@@ -3620,14 +3678,21 @@ function buildCtxMenu(msg, isOut, x, y){
   if(msg.text) items.push({ icon:"copy", label:"Salin", action:()=> copyText(msg.text) });
   const link = msgLink(msg);
   if(link) items.push({ icon:"link", label:"Salin Pautan", action:()=> copyText(link, "Pautan disalin") });
-  if(["document","photo","video","gif","audio","voice","round"].includes(msg.mediaType)){
-    items.push({ icon:"save", label:"Simpan ke Muat Turun", action: async ()=>{
-      try{
-        const url = await getFullUrl(msg, "Memuat turun");
-        const mime = msg.media?.mime || "application/octet-stream";
-        const ext = (mime.split("/")[1]||"bin").split(/[;+.-]/)[0];
-        showDownloadSheet(url, msg.fileName || `${msg.mediaType}_${msg.id}.${ext}`, mime, msg.fileSize);
-      }catch(e){ toast("Gagal: "+(e.message||e)); }
+  const hasFile = ["document","photo","video","gif","audio","voice","round"].includes(msg.mediaType);
+  const fileSheet = async ()=>{
+    try{
+      const url = await getFullUrl(msg, "Memuat turun");
+      const mime = msg.media?.mime || "application/octet-stream";
+      const ext = (mime.split("/")[1]||"bin").split(/[;+.-]/)[0];
+      showDownloadSheet(url, msg.fileName || `${msg.mediaType}_${msg.id}.${ext}`, mime, msg.fileSize);
+    }catch(e){ toast("Gagal: "+(e.message||e)); }
+  };
+  if(hasFile) items.push({ icon:"save", label:"Simpan ke Muat Turun", action: fileSheet });
+  if(hasFile || msg.text || link){
+    items.push({ icon:"share", label:"Kongsi", action:()=>{
+      if(hasFile){ fileSheet(); return; }
+      const t = msg.text || link;
+      if(navigator.share) navigator.share({ text: t }).catch(()=>{}); else copyText(t);
     }});
   }
   items.push({ icon:"fwd", label:"Majukan", action:()=> showForwardSheet(msg) });
@@ -3637,6 +3702,7 @@ function buildCtxMenu(msg, isOut, x, y){
       catch(e){ toast("Gagal sematkan: "+(e.message||e)); }
     }});
   }
+  items.push({ icon:"select", label:"Pilih", action:()=> enterSelect(msg) });
   items.push({ icon:"del", label:"Padam", danger:true, action:()=>{
     deleteTargetId = msg.id;
     el("btn-del-everyone").hidden = !(isOut || activeChatData?.isUser);
@@ -3678,6 +3744,86 @@ function buildCtxMenu(msg, isOut, x, y){
   }
   place();
 }
+
+// ══════════════════════════════════════════════════════════════════
+// MOD PILIH (tekan lama mesej — macam Telegram)
+// ══════════════════════════════════════════════════════════════════
+var selMode = false, lastTouchAt = 0, suppressClickUntil = 0, selIgnorePop = false;
+var selIds = new Set();
+function selMsgs(){ return (chatMsgs[activeChatId]||[]).filter(m=> selIds.has(m.id)); }
+function enterSelect(msg){
+  if(!msg || msg.pending) return;
+  hideCtx();
+  el("reaction-picker").hidden = true;
+  if(panelOpen) closePanel(false);
+  msgInp.blur();
+  selIds.clear();
+  selIds.add(msg.id);
+  if(!selMode){
+    selMode = true;
+    try{ history.pushState({sel:1}, ""); }catch(e){}
+  }
+  el("chat-view").classList.add("sel-mode");
+  el("sel-bar").hidden = false;
+  el("sel-actions").hidden = false;
+  updateSel();
+}
+function exitSelect(fromPop){
+  if(!selMode) return;
+  selMode = false;
+  selIds.clear();
+  el("chat-view").classList.remove("sel-mode");
+  el("sel-bar").hidden = true;
+  el("sel-actions").hidden = true;
+  document.querySelectorAll("#msgs-wrap .msg-row.selected").forEach(r=> r.classList.remove("selected"));
+  if(!fromPop && history.state && history.state.sel){ selIgnorePop = true; history.back(); }
+}
+function updateSel(){
+  if(!selIds.size){ exitSelect(); return; }
+  document.querySelectorAll("#msgs-wrap .msg-row").forEach(r=> r.classList.toggle("selected", selIds.has(r.dataset.msgId)));
+  const list = selMsgs();
+  el("sel-count").textContent = selIds.size+" dipilih";
+  el("sel-copy").hidden = !list.some(m=> m.text);
+  el("sel-reply").hidden = selIds.size !== 1;
+}
+function toggleSel(id){
+  if(selIds.has(id)) selIds.delete(id); else selIds.add(id);
+  updateSel();
+}
+// Dalam mod pilih: ketik mana-mana mesej = pilih/nyahpilih (sekat tindakan lain)
+el("msgs-wrap").addEventListener("click", e=>{
+  if(Date.now() < suppressClickUntil){ e.preventDefault(); e.stopPropagation(); return; }
+  if(!selMode) return;
+  e.preventDefault(); e.stopPropagation();
+  const row = e.target.closest(".msg-row");
+  if(row && row.dataset.msgId) toggleSel(row.dataset.msgId);
+}, true);
+el("sel-close").onclick = (e)=>{ e.stopPropagation(); exitSelect(); };
+el("sel-copy").onclick = (e)=>{
+  e.stopPropagation();
+  copyText(selMsgs().map(m=> m.text).filter(Boolean).join("\n\n"));
+  exitSelect();
+};
+el("sel-del").onclick = (e)=>{
+  e.stopPropagation();
+  const list = selMsgs();
+  if(!list.length) return;
+  deleteTargetId = list.map(m=> m.id);
+  el("btn-del-everyone").hidden = !(list.every(m=> m.out) || activeChatData?.isUser);
+  el("del-modal").hidden = false;
+};
+el("sel-fwd").onclick = el("sel-forward").onclick = (e)=>{
+  e.stopPropagation();
+  const list = selMsgs();
+  if(list.length) showForwardSheet(list[0], list.map(m=> m.id));
+  exitSelect();
+};
+el("sel-reply").onclick = (e)=>{
+  e.stopPropagation();
+  const m = selMsgs()[0];
+  exitSelect();
+  if(m) setReply(m);
+};
 function hideCtx(){ el("ctx-menu").hidden = true; }
 
 // ══════════════════════════════════════════════════════════════════
@@ -3728,10 +3874,12 @@ el("btn-del-cancel").onclick = ()=>{ el("del-modal").hidden = true; deleteTarget
 async function deleteMsg(id, revoke){
   el("del-modal").hidden = true;
   deleteTargetId = null;
+  if(selMode) exitSelect();
   const cid = activeChatId;
+  const ids = [].concat(id).map(String);
   try{
-    await client.deleteMessages(entities.get(cid), [Number(id)], { revoke });
-    chatMsgs[cid] = (chatMsgs[cid]||[]).filter(x=>x.id!==String(id));
+    await client.deleteMessages(entities.get(cid), ids.map(Number), { revoke });
+    chatMsgs[cid] = (chatMsgs[cid]||[]).filter(x=> !ids.includes(x.id));
     renderMessages(cid, chatMsgs[cid], true);
     saveMsgCache(cid);
     toast(revoke ? "Dipadam untuk semua" : "Dipadam untuk anda");
@@ -3741,8 +3889,8 @@ async function deleteMsg(id, revoke){
 // ══════════════════════════════════════════════════════════════════
 // MAJUKAN
 // ══════════════════════════════════════════════════════════════════
-function showForwardSheet(msg){
-  forwardMsgId = msg.id;
+function showForwardSheet(msg, ids){
+  forwardMsgId = ids && ids.length ? ids : [msg.id];
   const fromCid = activeChatId;
   const list = el("forward-list");
   list.innerHTML = dialogs.slice(0,50).map(d=>`
@@ -3754,7 +3902,7 @@ function showForwardSheet(msg){
     item.onclick = async ()=>{
       el("forward-sheet").hidden = true;
       try{
-        await client.forwardMessages(entities.get(item.dataset.id), { messages: [Number(forwardMsgId)], fromPeer: entities.get(fromCid) });
+        await client.forwardMessages(entities.get(item.dataset.id), { messages: [].concat(forwardMsgId).map(Number), fromPeer: entities.get(fromCid) });
         toast("Dimajukan ✓");
       }catch(e){ toast("Gagal majukan: "+(e.message||e)); }
     };
@@ -3783,6 +3931,7 @@ el("btn-close-media").onclick = ()=>{
 // NAVIGASI MUDAH ALIH
 // ══════════════════════════════════════════════════════════════════
 function closeChat(){
+  if(selMode) exitSelect(true);
   activeChatId = null;
   applyWallpaper();
   closePanel(false);
@@ -3797,7 +3946,10 @@ el("back-btn").onclick = (e)=>{
   closeChat();
 };
 window.addEventListener("popstate", ()=>{
+  if(selIgnorePop){ selIgnorePop = false; return; }
   if(!el("media-viewer").hidden){ el("btn-close-media").onclick(); return; }
+  if(selMode){ exitSelect(true); return; }
+  if(!el("ctx-menu").hidden){ hideCtx(); }
   if(!el("profile-view").hidden){ closeProfile(); return; }
   if(!el("chat-search-bar").hidden){ closeChatSearch(); return; }
   if(activeChatId) closeChat();
