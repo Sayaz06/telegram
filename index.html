@@ -18,6 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-app-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-firestore-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-auth-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-storage-compat.min.js"></script>
 <!-- Telegram MTProto (gramjs) — dari repo sayaz06/telegrambackend melalui jsDelivr; jika gagal, guna salinan tempatan -->
 <script src="https://cdn.jsdelivr.net/gh/sayaz06/telegrambackend@main/gramjs.js"></script>
 <script>window.GramJS || document.write('<script src="gramjs.js"><\/script>');</script>
@@ -120,7 +121,7 @@ a{color:var(--accent);text-decoration:none}
 /* ── APP LAYOUT ──────────────────────────────────────────────── */
 #app{display:flex;height:100%;overflow:hidden}
 #sidebar{width:340px;min-width:340px;display:flex;flex-direction:column;background:var(--sidebar-bg);border-right:1px solid var(--border);position:relative;z-index:10}
-#main{flex:1;display:flex;flex-direction:column;background:var(--chat-bg);background-image:var(--chat-bg-img);position:relative;overflow:hidden}
+#main{flex:1;display:flex;flex-direction:column;background-color:#0e0b1a;background-image:url("wallpaper.jpg");background-size:cover;background-position:center;background-repeat:no-repeat;position:relative;overflow:hidden}
 
 @media(max-width:640px){
   #sidebar{position:fixed;inset:0;width:100%;transform:translateX(-100%);transition:transform .25s ease;z-index:100}
@@ -572,6 +573,10 @@ a{color:var(--accent);text-decoration:none}
         <button class="set-row" id="btn-clear-cache"><span class="ic">🧹</span>Kosongkan simpanan<span class="sub">gambar &amp; mesej</span></button>
       </div>
       <div class="set-card">
+        <button class="set-row" id="btn-wp-global"><span class="ic">🖼</span>Latar belakang chat<span class="sub" id="set-wp-sub">Asal</span></button>
+        <button class="set-row" id="btn-wp-global-reset" hidden><span class="ic">↩</span>Guna latar asal</button>
+      </div>
+      <div class="set-card">
         <button class="set-row danger" id="btn-logout"><span class="ic">🚪</span>Log keluar</button>
       </div>
       <div class="set-foot">MyGram · sambungan terus ke Telegram</div>
@@ -778,6 +783,7 @@ a{color:var(--accent);text-decoration:none}
 <!-- Hidden inputs -->
 <input type="file" id="file-pick" hidden multiple/>
 <input type="file" id="photo-pick" accept="image/*,video/*" capture="environment" hidden/>
+<input type="file" id="wp-pick" accept="image/*" hidden/>
 
 <!-- Toast -->
 <div id="toast"></div>
@@ -1051,6 +1057,7 @@ async function enterApp(){
   } else if(!dialogs.length){
     el("dialog-list").innerHTML = '<div class="list-note">Memuatkan chat...</div>';
   }
+  loadWallpapers();
   startTelegram();
 }
 
@@ -1427,6 +1434,9 @@ function renderSettings(){
   el("set-theme-sub").textContent = currentTheme()==="dark" ? "Hidup" : "Mati";
   const p = ("Notification" in window) ? Notification.permission : "unsupported";
   el("set-notif-sub").textContent = p==="granted" ? "Hidup" : p==="denied" ? "Disekat" : p==="unsupported" ? "Tidak disokong" : "Mati";
+  const hasWp = typeof wallpapers!=="undefined" && !!wallpapers.global;
+  el("set-wp-sub").textContent = hasWp ? "Sendiri" : "Asal";
+  el("btn-wp-global-reset").hidden = !hasWp;
 }
 el("btn-theme").addEventListener("click", ()=> setTimeout(renderSettings, 0));
 el("btn-notif").onclick = async ()=>{
@@ -1443,6 +1453,116 @@ el("btn-clear-cache").onclick = async ()=>{
     toast("Simpanan dikosongkan ✓");
   }catch(e){ toast("Gagal: "+(e.message||e)); }
 };
+
+// ══════════════════════════════════════════════════════════════════
+// LATAR BELAKANG CHAT (WALLPAPER)
+//   Asal  : wallpaper.jpg dalam repo GitHub
+//   Sendiri: Firebase Storage users/{UID}/mygram_wallpapers/{chat|global}.jpg
+//   Senarai: Firestore users/{UID}/mygram_settings/wallpapers { map: { global, <cid> } }
+// ══════════════════════════════════════════════════════════════════
+const DEFAULT_WP = "wallpaper.jpg";
+let wallpapers = {};          // "global" / cid -> url (atau "fs:<kunci>" jika simpan dalam Firestore)
+const wpResolved = {};        // kunci -> url sedia guna
+let wpTarget = "global";
+
+async function resolveWp(key){
+  const v = wallpapers[key];
+  if(!v) return null;
+  if(!v.startsWith("fs:")) return v;
+  if(wpResolved[key]) return wpResolved[key];
+  let data = await cacheGet("wpdata:"+key);
+  if(!data){
+    const s = await doc(`${P}/mygram_wallpapers/${key}`).get().catch(()=>null);
+    data = s && s.exists ? s.data().data : null;
+    if(data) cacheSet("wpdata:"+key, data);
+  }
+  if(data) wpResolved[key] = data;
+  return data;
+}
+async function applyWallpaper(){
+  const cid = activeChatId;
+  let url = (cid && await resolveWp(cid)) || await resolveWp("global") || DEFAULT_WP;
+  if(cid !== activeChatId) return;
+  el("main").style.backgroundImage = `url("${url}")`;
+}
+async function loadWallpapers(){
+  try{
+    const c = await cacheGet("wallpapers");
+    if(c && typeof c==="object"){ wallpapers = c; applyWallpaper(); }
+    const s = await doc(`${P}/mygram_settings/wallpapers`).get();
+    wallpapers = s.exists ? (s.data().map || {}) : {};
+    cacheSet("wallpapers", wallpapers);
+    applyWallpaper();
+    if(curTab==="settings") renderSettings();
+  }catch(e){ console.warn("Gagal muat latar", e); }
+}
+async function saveWallpaperMap(){
+  await doc(`${P}/mygram_settings/wallpapers`).set({ map: wallpapers, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+  cacheSet("wallpapers", wallpapers);
+}
+function pickWallpaper(target){
+  wpTarget = target;
+  el("wp-pick").click();
+}
+async function compressImage(file, max=1600, q=0.82){
+  const img = await createImageBitmap(file);
+  const scale = Math.min(1, max / Math.max(img.width, img.height));
+  const c = document.createElement("canvas");
+  c.width = Math.round(img.width*scale); c.height = Math.round(img.height*scale);
+  c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+  return await new Promise(res=> c.toBlob(res, "image/jpeg", q));
+}
+function blobToDataURL(blob){
+  return new Promise((res, rej)=>{ const r = new FileReader(); r.onload = ()=>res(r.result); r.onerror = rej; r.readAsDataURL(blob); });
+}
+el("wp-pick").onchange = async (e)=>{
+  const f = e.target.files[0];
+  e.target.value = "";
+  if(!f) return;
+  const target = wpTarget;
+  toast("Memuat naik latar...", 60000);
+  try{
+    const blob = await compressImage(f);
+    let value;
+    try{
+      const ref = firebase.storage().ref(`users/${UID}/mygram_wallpapers/${target}.jpg`);
+      await ref.put(blob, { contentType: "image/jpeg" });
+      value = await ref.getDownloadURL();
+    }catch(err){
+      // Firebase Storage tak boleh guna (tiada bucket / pelan / rules) → simpan dalam Firestore
+      console.warn("Storage gagal, guna Firestore:", err);
+      const small = blob.size > 650*1024 ? await compressImage(f, 1080, 0.7) : blob;
+      const data = await blobToDataURL(small);
+      await doc(`${P}/mygram_wallpapers/${target}`).set({ data });
+      cacheSet("wpdata:"+target, data);
+      wpResolved[target] = data;
+      value = "fs:"+target;
+    }
+    wallpapers[target] = value;
+    delete wpResolved[target];
+    if(value.startsWith("fs:")) wpResolved[target] = await cacheGet("wpdata:"+target);
+    await saveWallpaperMap();
+    applyWallpaper();
+    if(curTab==="settings") renderSettings();
+    toast(target==="global" ? "Latar semua chat ditukar ✓" : "Latar chat ini ditukar ✓");
+  }catch(err){
+    toast("Gagal tukar latar: "+(err.message||err), 4000);
+  }
+};
+async function resetWallpaper(target){
+  delete wallpapers[target];
+  delete wpResolved[target];
+  try{
+    await saveWallpaperMap();
+    firebase.storage().ref(`users/${UID}/mygram_wallpapers/${target}.jpg`).delete().catch(()=>{});
+    doc(`${P}/mygram_wallpapers/${target}`).delete().catch(()=>{});
+  }catch(e){}
+  applyWallpaper();
+  if(curTab==="settings") renderSettings();
+  toast("Latar asal digunakan");
+}
+el("btn-wp-global").onclick = ()=> pickWallpaper("global");
+el("btn-wp-global-reset").onclick = ()=> resetWallpaper("global");
 
 // ── Profil saya ──
 let meLoaded = false;
@@ -1634,6 +1754,7 @@ async function fetchMissingReplies(cid){
 async function openChat(cid){
   activeChatId = String(cid);
   activeChatData = dialogs.find(d=>d.cid===activeChatId) || extraChats.get(activeChatId) || { cid, name:"Chat" };
+  applyWallpaper();
 
   if(window.innerWidth <= 640){
     el("sidebar").classList.remove("open");
@@ -2311,10 +2432,13 @@ el("btn-chat-menu").onclick = (e)=>{
   e.stopPropagation();
   if(!activeChatId) return;
   const r = e.currentTarget.getBoundingClientRect();
-  showMenu([
+  const items = [
     { icon:"🔍", label:"Cari dalam chat", action: openChatSearch },
-    { icon:"⬆", label:"Muat mesej lama", action: loadOlder },
-  ], r.right-210, r.bottom+4);
+    { icon:"🖼", label:"Tukar latar", action: ()=> pickWallpaper(activeChatId) },
+  ];
+  if(wallpapers[activeChatId]) items.push({ icon:"↩", label:"Guna latar asal", action: ()=> resetWallpaper(activeChatId) });
+  items.push({ icon:"⬆", label:"Muat mesej lama", action: loadOlder });
+  showMenu(items, r.right-210, r.bottom+4);
 };
 async function toggleMute(cid){
   if(!tgReady) return;
@@ -3068,6 +3192,7 @@ el("btn-close-media").onclick = ()=>{
 // ══════════════════════════════════════════════════════════════════
 function closeChat(){
   activeChatId = null;
+  applyWallpaper();
   if(currentAudio){ currentAudio.pause(); currentAudio = null; }
   el("chat-view").hidden = true;
   el("empty-state").hidden = false;
