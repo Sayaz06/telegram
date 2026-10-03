@@ -666,6 +666,11 @@ div#ctx-menu.msg-menu{gap:12px}
 .list-note{padding:28px 16px;text-align:center;color:var(--fg3);font-size:13px}
 .msgs-note{margin:auto;color:var(--pill-fg);font-size:13px;text-align:center;padding:10px 16px;background:var(--pill);border-radius:14px}
 .msgs-note.err{color:var(--danger)}
+/* Carian perbualan: nama chat + isi mesej (macam Telegram) */
+.gs-head{padding:9px 16px;font-size:14px;font-weight:600;color:var(--fg2);background:color-mix(in srgb,var(--fg) 6%,transparent)}
+.gs-note{padding:18px 16px;text-align:center;color:var(--fg3);font-size:14px}
+.gs-item .d-preview{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.dialog-item mark,.gs-item mark{background:none;color:var(--accent);font-weight:inherit}
 .service-msg{text-align:center;padding:4px 0}
 .service-msg span{background:var(--pill);color:var(--pill-fg);border-radius:12px;padding:3px 10px;font-size:13px;display:inline-block;max-width:85%}
 .d-badge.muted{background:var(--fg3)}
@@ -1521,17 +1526,88 @@ async function loadAvatars(){
 }
 
 // ── RENDER SENARAI CHAT ──────────────────────────────────────────
+// Carian global mesej (semua chat) — macam kotak carian Telegram
+let gsTimer = null;
+let gsState = { q:"", items:null, err:"" };
+async function runGlobalSearch(q){
+  if(!tgReady){ gsState = { q, items:[], err:"Belum bersambung ke Telegram" }; renderDialogs(); return; }
+  try{
+    const r = await client.invoke(new Api.messages.SearchGlobal({
+      q, filter: new Api.InputMessagesFilterEmpty(), minDate:0, maxDate:0,
+      offsetRate:0, offsetPeer: new Api.InputPeerEmpty(), offsetId:0, limit:40,
+    }));
+    if(q !== searchQuery) return;
+    const ents = new Map();
+    (r.users||[]).forEach(u=> ents.set(peerKey(u), u));
+    (r.chats||[]).forEach(c=> ents.set(peerKey(c), c));
+    const items = (r.messages||[]).filter(m=> m.className==="Message").map(m=>{
+      const cid = peerKey(m.peerId);
+      const e = ents.get(cid) || entities.get(cid);
+      if(e && !entities.has(cid)) entities.set(cid, e);
+      const d = dialogs.find(x=> x.cid===cid);
+      if(!rawMsgs[cid]) rawMsgs[cid] = new Map();
+      return { cid, id:String(m.id), name: d?.name || (e ? entName(e) : "Chat"),
+        isUser: e ? e.className==="User" : true,
+        text: (m.message || msgPreview(m) || "").replace(/\s+/g," "),
+        date: new Date(m.date*1000).toISOString(), out: !!m.out };
+    });
+    gsState = { q, items, err:"" };
+  }catch(e){
+    if(q !== searchQuery) return;
+    gsState = { q, items:[], err:"Gagal cari: "+(e.message||e) };
+  }
+  if(curTab==="chats") renderDialogs();
+}
+function gsSnippet(text, q){
+  const i = text.toLowerCase().indexOf(q.toLowerCase());
+  let t = text;
+  if(i > 28) t = "…" + text.slice(i - 20);
+  return hilite(t.substring(0, 160), q);
+}
+function gsItemHTML(it, q){
+  const av = avatarCache.get(it.cid);
+  const tick = it.out ? `<span class="d-tick">✓✓</span>` : "";
+  return `<div class="dialog-item gs-item" data-id="${escHtml(it.cid)}" data-msg="${escHtml(it.id)}">
+    <div class="d-avatar" style="background:${nameColor(it.name)}">${av?`<img src="${av}" alt=""/>`:escHtml(avatarInitial(it.name||"?"))}</div>
+    <div class="d-info">
+      <div class="d-row1">
+        <span class="d-name">${escHtml(it.name||"?")}</span>
+        <span class="d-time">${tick}${fmtListTime(it.date)}</span>
+      </div>
+      <div class="d-row2"><span class="d-preview">${gsSnippet(it.text, q)}</span></div>
+    </div>
+  </div>`;
+}
+async function openGsResult(cid, id, name, isUser){
+  if(!dialogs.some(d=> d.cid===cid) && !extraChats.has(cid)) extraChats.set(cid, { cid, name, isUser });
+  if(activeChatId !== cid) await openChat(cid);
+  if(activeChatId === cid) jumpToMessage(Number(id));
+}
 function renderDialogs(){
   const q = searchQuery.toLowerCase();
   const list = q ? dialogs.filter(d=>(d.name||"").toLowerCase().includes(q)) : dialogs;
   const container = el("dialog-list");
-  if(!list.length){
-    container.innerHTML = `<div class="list-note">${q?"Tiada padanan":"Tiada chat"}</div>`;
+  if(!q && !list.length){
+    container.innerHTML = `<div class="list-note">Tiada chat</div>`;
     return;
   }
-  container.innerHTML = list.map(dialogHTML).join("");
+  let html = list.map(d=> q ? dialogHTML(d).replace(/(<span class="d-name">)([^<]*)(<\/span>)/, (m,a,b,c)=> a + b.replace(new RegExp(escHtml(searchQuery).replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"gi"), x=>`<mark>${x}</mark>`) + c) : dialogHTML(d)).join("");
+  if(q){
+    let body;
+    if(searchQuery.length < 2) body = `<div class="gs-note">Taip sekurang-kurangnya 2 huruf untuk cari mesej</div>`;
+    else if(gsState.q !== searchQuery) body = `<div class="gs-note">Mencari mesej...</div>`;
+    else if(gsState.err) body = `<div class="gs-note">${escHtml(gsState.err)}</div>`;
+    else if(!gsState.items.length) body = `<div class="gs-note">Tiada mesej dijumpai</div>`;
+    else body = gsState.items.map(it=> gsItemHTML(it, searchQuery)).join("");
+    if(!list.length) html = `<div class="gs-note">Tiada chat bernama "${escHtml(searchQuery)}"</div>`;
+    html += `<div class="gs-head">Mesej</div>` + body;
+  }
+  container.innerHTML = html;
   container.querySelectorAll(".dialog-item").forEach(item=>{
-    item.onclick = ()=> openChat(item.dataset.id);
+    if(item.dataset.msg){
+      const it = (gsState.items||[]).find(x=> x.cid===item.dataset.id && x.id===item.dataset.msg) || {};
+      item.onclick = ()=> openGsResult(item.dataset.id, item.dataset.msg, it.name, it.isUser);
+    } else item.onclick = ()=> openChat(item.dataset.id);
   });
 }
 function dialogHTML(d){
@@ -1560,8 +1636,13 @@ function dialogHTML(d){
 }
 el("search-inp").oninput = e=>{
   searchQuery = e.target.value.trim();
-  if(curTab==="contacts") renderContacts();
-  else renderDialogs();
+  clearTimeout(gsTimer);
+  if(curTab==="contacts"){ renderContacts(); return; }
+  renderDialogs();
+  if(searchQuery.length >= 2){
+    const q = searchQuery;
+    gsTimer = setTimeout(()=> runGlobalSearch(q), 450);
+  }
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -3860,7 +3941,23 @@ function buildCtxMenu(msg, isOut, x, y){
     const wrapL = el("msgs-wrap").getBoundingClientRect().left;
     let left = wrapL + 10;
     left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
-    let top = Math.min(y, r.bottom) - 30;
+    // Macam Telegram: butang ke-2 (Salin) sebaris dengan mesej yang ditekan,
+    // jadi baris emoji duduk DI ATAS mesej dan tak menutupnya
+    let top;
+    const bar = menu.querySelector(".ctx-react");
+    if(bar && bar.classList.contains("expanded")){
+      top = parseFloat(menu.style.top) || 0;
+    } else {
+      menu.style.top = "0px";
+      const its = menu.querySelectorAll(".ctx-item");
+      const ref = its[1] || its[0];
+      const mTop = menu.getBoundingClientRect().top;
+      const off = ref ? (ref.getBoundingClientRect().top - mTop + ref.offsetHeight/2) : 30;
+      const anchorY = r.bottom - r.top > 220
+        ? Math.max(r.top + 40, Math.min(y - 20, r.bottom - 40))   // mesej tinggi (sticker/gambar): ikut tempat ditekan
+        : (r.top + r.bottom) / 2;                                // mesej biasa: tengah mesej
+      top = anchorY - off;
+    }
     const ia = el("input-area");
     const botMax = (ia && ia.offsetParent ? ia.getBoundingClientRect().top : window.innerHeight) - 6;
     top = Math.max(topMin, Math.min(top, botMax - h));
