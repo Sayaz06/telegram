@@ -18,8 +18,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-app-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-firestore-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-auth-compat.min.js"></script>
-<!-- Telegram MTProto (gramjs) — fail gramjs.js mesti ada dalam repo yang sama -->
-<script src="gramjs.js"></script>
+<!-- Telegram MTProto (gramjs) — dari repo sayaz06/telegrambackend melalui jsDelivr; jika gagal, guna salinan tempatan -->
+<script src="https://cdn.jsdelivr.net/gh/sayaz06/telegrambackend@main/gramjs.js"></script>
+<script>window.GramJS || document.write('<script src="gramjs.js"><\/script>');</script>
 
 <style>
 /* ── TOKENS ──────────────────────────────────────────────────── */
@@ -247,6 +248,10 @@ a{color:var(--accent);text-decoration:none}
 /* ── DELETE CONFIRM ───────────────────────────────────────────── */
 #del-modal{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:700;display:flex;align-items:center;justify-content:center;padding:24px}
 #del-modal .modal{background:var(--surface);border-radius:14px;padding:20px;max-width:340px;width:100%;display:flex;flex-direction:column;gap:14px}
+#dl-modal{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:700;display:flex;align-items:center;justify-content:center;padding:24px}
+#dl-modal .modal{background:var(--surface);border-radius:14px;padding:20px;max-width:340px;width:100%;display:flex;flex-direction:column;gap:10px}
+#dl-modal h3{font-size:16px;font-weight:600;word-break:break-all}
+#dl-modal p{color:var(--fg2);font-size:13px}
 #del-modal h3{font-size:16px;font-weight:600}
 #del-modal p{color:var(--fg2);font-size:14px;line-height:1.5}
 .del-actions{display:flex;flex-direction:column;gap:8px}
@@ -570,6 +575,18 @@ a{color:var(--accent);text-decoration:none}
       <button class="btn-del-me" id="btn-del-me">Padam untuk Saya Sahaja</button>
       <button class="btn-cancel" id="btn-del-cancel">Batal</button>
     </div>
+  </div>
+</div>
+
+<!-- Download Modal -->
+<div id="dl-modal" hidden>
+  <div class="modal">
+    <h3 id="dl-name">Fail</h3>
+    <p id="dl-size"></p>
+    <button class="btn-primary" id="btn-dl-save">💾 Simpan ke phone</button>
+    <button class="btn-del-me" id="btn-dl-share">📤 Kongsi / Buka dengan app lain</button>
+    <button class="btn-del-me" id="btn-dl-open">🔗 Buka dalam tab baru</button>
+    <button class="btn-cancel" id="btn-dl-cancel">Tutup</button>
   </div>
 </div>
 
@@ -1641,9 +1658,7 @@ async function mediaAction(msg, act, btn){
       btn.textContent = "⏸";
     } else if(act==="download"){
       const url = await getFullUrl(msg, "Memuat turun fail");
-      const a = document.createElement("a");
-      a.href = url; a.download = msg.fileName || "fail";
-      document.body.appendChild(a); a.click(); a.remove();
+      showDownloadSheet(url, msg.fileName || "fail", msg.media?.mime || "application/octet-stream", msg.fileSize);
     }
   }catch(e){
     toast("Gagal: "+(e.message||e));
@@ -1890,9 +1905,48 @@ el("file-pick").onchange = async e=>{
   for(const f of files) await sendFile(f);
 };
 
+// ── SIMPAN FAIL YANG DIMUAT TURUN ────────────────────────────────
+let dlCurrent = null;
+function showDownloadSheet(url, name, mime, size){
+  dlCurrent = { url, name, mime };
+  el("dl-name").textContent = name;
+  el("dl-size").textContent = (size ? fmtFileSize(size)+" · " : "") + "Siap dimuat turun";
+  el("btn-dl-share").hidden = !(navigator.canShare && navigator.share);
+  el("dl-modal").hidden = false;
+}
+el("btn-dl-save").onclick = ()=>{
+  if(!dlCurrent) return;
+  const a = document.createElement("a");
+  a.href = dlCurrent.url; a.download = dlCurrent.name; a.rel = "noopener";
+  document.body.appendChild(a); a.click(); a.remove();
+  toast("Semak folder Download / notifikasi muat turun", 3500);
+};
+el("btn-dl-share").onclick = async ()=>{
+  if(!dlCurrent) return;
+  try{
+    const blob = await (await fetch(dlCurrent.url)).blob();
+    const f = new File([blob], dlCurrent.name, { type: dlCurrent.mime || blob.type || "application/octet-stream" });
+    if(navigator.canShare && !navigator.canShare({ files:[f] })){ toast("Jenis fail ini tidak boleh dikongsi"); return; }
+    await navigator.share({ files:[f], title: dlCurrent.name });
+  }catch(e){ if(e.name!=="AbortError") toast("Gagal kongsi: "+(e.message||e)); }
+};
+el("btn-dl-open").onclick = ()=>{
+  if(!dlCurrent) return;
+  const w = window.open(dlCurrent.url, "_blank");
+  if(!w) toast("Browser menyekat tab baru");
+};
+el("btn-dl-cancel").onclick = ()=>{ el("dl-modal").hidden = true; };
+
+// Tukar File browser → fail yang gramjs faham (CustomFile + buffer)
+async function uploadToTelegram(file, onProgress){
+  const buf = G.Buffer.from(await file.arrayBuffer());
+  const cf = new G.CustomFile(file.name || "fail", file.size, "", buf);
+  return await client.uploadFile({ file: cf, workers: 4, maxBufferSize: 2**31, onProgress });
+}
+
 async function sendFile(file, opts={}){
   if(!activeChatId || !tgReady){ toast("Belum bersambung ke Telegram"); return; }
-  if(file.size > 2000*1024*1024){ toast("Fail terlalu besar (max 2GB)"); return; }
+  if(file.size > 500*1024*1024){ toast("Fail terlalu besar untuk phone (max 500MB)"); return; }
   const cid = activeChatId;
   const ent = entities.get(cid);
   const replyId = replyToMsg ? Number(replyToMsg.id) : undefined;
@@ -1902,13 +1956,14 @@ async function sendFile(file, opts={}){
   const isMedia = /^image\/(jpeg|png|webp)$|^video\//.test(file.type);
   toast("Memuat naik... 0%", 120000);
   try{
+    const inputFile = await uploadToTelegram(file, (p)=> toast(`Memuat naik... ${Math.round(Number(p)*100)}%`, 120000));
+    toast("Menghantar...", 60000);
     const params = {
-      file,
+      file: inputFile,
       caption,
       replyTo: replyId,
       forceDocument: !isMedia && !opts.voice,
-      workers: 2,
-      progressCallback: (p)=> toast(`Memuat naik... ${Math.round(Number(p)*100)}%`, 120000),
+      workers: 1,
     };
     if(opts.voice){
       params.voiceNote = true;
