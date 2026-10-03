@@ -239,6 +239,20 @@ a{color:var(--accent);text-decoration:none}
 #mp-tabs button.active{background:var(--hover);color:var(--fg)}
 #mp-back{position:absolute;right:12px;bottom:12px;width:44px;height:44px;border-radius:50%;background:var(--bar-bg);border:1px solid var(--border);box-shadow:var(--bar-shadow);display:flex;align-items:center;justify-content:center;color:var(--fg);z-index:3}
 #mp-back svg{width:22px;height:22px;fill:currentColor}
+/* ── GELEMBUNG MESEJ GAYA TELEGRAM ───────────────────────────── */
+#msgs-wrap{overflow-x:hidden}
+#chat-view .msg-bubble-wrap{min-width:0}
+@media(max-width:640px){#chat-view .msg-bubble-wrap{max-width:86%}}
+#chat-view .bubble{max-width:100%;font-size:16.5px;line-height:1.35;padding:6px 11px 6px 12px;border-radius:18px}
+#chat-view .msg-row.in .bubble{border-bottom-left-radius:6px}
+#chat-view .msg-row.out .bubble{border-bottom-right-radius:6px}
+#chat-view .reply-quote{max-width:100%;min-width:0;overflow:hidden;border-radius:8px;padding:4px 10px;margin-bottom:4px}
+#chat-view .reply-quote .rq-name{font-size:14px}
+#chat-view .reply-quote .rq-text{font-size:14px}
+#chat-view .msg-time{font-size:12px}
+/* Masa & tanda ✓ duduk sebaris dengan ayat terakhir (macam Telegram) */
+#chat-view .bubble.meta-inline .bubble-meta{position:absolute;right:10px;bottom:5px;margin:0}
+.meta-ghost{display:inline-flex;align-items:center;gap:3px;visibility:hidden;margin-left:12px;height:1px;vertical-align:baseline;pointer-events:none;user-select:none}
 .d-info{flex:1;min-width:0}
 .d-row1{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
 .d-name{font-weight:600;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
@@ -917,7 +931,7 @@ function el(id){ return document.getElementById(id); }
 function fmtTime(ts){
   if(!ts) return "";
   const d = new Date(ts);
-  return d.toLocaleTimeString("ms-MY",{hour:"2-digit",minute:"2-digit"});
+  return d.toLocaleTimeString("ms-MY",{hour:"numeric",minute:"2-digit"});
 }
 function fmtDate(ts){
   if(!ts) return "";
@@ -1725,10 +1739,22 @@ function serviceText(m){
     MessageActionChatCreate:"mencipta kumpulan", MessageActionChannelCreate:"mencipta saluran",
     MessageActionPhoneCall:"panggilan telefon", MessageActionScreenshotTaken:"mengambil tangkapan skrin",
     MessageActionContactSignUp:"menyertai Telegram", MessageActionChatJoinedByRequest:"menyertai kumpulan",
+    MessageActionSetChatWallPaper:"menetapkan latar baharu untuk chat ini",
+    MessageActionSetSameChatWallPaper:"menetapkan latar yang sama untuk chat ini",
+    MessageActionSetMessagesTTL:"menukar tempoh padam automatik",
+    MessageActionHistoryClear:"mengosongkan sejarah chat",
+    MessageActionChatMigrateTo:"menaik taraf kumpulan", MessageActionChannelMigrateFrom:"menaik taraf kumpulan",
+    MessageActionGameScore:"bermain permainan", MessageActionGroupCall:"panggilan suara kumpulan",
+    MessageActionTopicCreate:"mencipta topik", MessageActionGiftPremium:"menghadiahkan Telegram Premium",
   };
   let who = "";
-  try{ who = m.sender ? entName(m.sender) : ""; }catch(e){}
-  return (who? who+" ":"") + (map[a] || "aktiviti kumpulan");
+  try{
+    if(m.out) who = "Anda";
+    else if(m.sender) who = entName(m.sender);
+    if(who==="Mesej Tersimpan") who = "Anda";
+  }catch(e){}
+  const fallback = activeChatData && (activeChatData.isGroup || activeChatData.isChannel) ? "aktiviti kumpulan" : "aktiviti chat";
+  return (who? who+" ":"") + (map[a] || fallback);
 }
 
 function toMsg(m, cid){
@@ -2025,6 +2051,16 @@ function buildMsgElement(msg, prevMsg){
     </div>`;
 
   const bubble = row.querySelector(".bubble");
+  // Letak masa sebaris dengan ayat terakhir: "hantu" masa dalam teks simpan ruang
+  const metaEl = bubble.querySelector(".bubble-meta");
+  const lastText = metaEl && metaEl.previousElementSibling;
+  if(lastText && lastText.classList.contains("msg-text")){
+    const ghost = document.createElement("span");
+    ghost.className = "meta-ghost";
+    ghost.innerHTML = metaEl.innerHTML;
+    lastText.appendChild(ghost);
+    bubble.classList.add("meta-inline");
+  }
   let pressTimer;
   bubble.addEventListener("contextmenu", e=>{ e.preventDefault(); buildCtxMenu(msg, isOut, e.clientX, e.clientY); });
   bubble.addEventListener("touchstart", ()=>{ pressTimer = setTimeout(()=>{
